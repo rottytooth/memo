@@ -1,0 +1,145 @@
+@font-face {
+    font-family: hack;
+    src: url(fonts/Hack-Regular.ttf);
+}
+:root {
+    --n12: 0.07692307692307693;
+    --n11: 0.15384615384615385;
+    --n10: 0.23076923076923078;
+    --n9: 0.3076923076923077;
+    --n8: 0.38461538461538464;
+    --n7: 0.46153846153846156;
+    --n6: 0.5384615384615384;
+    --n5: 0.6153846153846154;
+    --n4: 0.6923076923076923;
+    --n3: 0.7692307692307693;
+    --n2: 0.8461538461538461;
+    --n1: 0.9230769230769231;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    background-color: #fff;
+    font-family: hack;
+}
+#state {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 33vw;
+    color: #a00;
+}
+/* .varname_store {
+    text-align: right;
+} */
+#box {
+    display: flex;
+    flex-flow: column;
+    height: 100%;
+}
+#content {
+    flex: 0 1 auto;
+    width: 100%;
+}
+#filler {
+    /* background: linear-gradient(#fff, #505061); */
+    /* background: linear-gradient(#fff, #a4a4c5); */
+    background: linear-gradient(#fff, #afafbe);
+    flex: 1 1 auto;
+}
+#fadeout {
+    padding-top: 20px;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}
+#fadeout span {
+    display: block;
+    line-height: 110%;
+    padding-bottom: 20px;
+    font-size: 1em;
+    height: 20px;
+}
+#fadeout span.response {
+    display: inline;
+    color: #a00;
+}
+#fadeout span.response:before {
+    display: inline;
+    color: #a00;
+    content: "▕ ";
+}
+#fadeout #n-12{
+    opacity: var(--n12);
+}
+#fadeout #n-11{
+    opacity: var(--n11);
+}
+#fadeout #n-10{
+    opacity: var(--n10);
+}
+#fadeout #n-9{
+    opacity: var(--n9);
+}
+#fadeout #n-8{
+    opacity: var(--n8);
+}
+#fadeout #n-7{
+    opacity: var(--n7);
+}
+#fadeout #n-6{
+    opacity: var(--n6);
+}
+#fadeout #n-5{
+    opacity: var(--n5);
+}
+#fadeout #n-4{
+    opacity: var(--n4);
+}
+#fadeout #n-3{
+    opacity: var(--n3);
+}
+#fadeout #n-2{
+    opacity: var(--n2);
+}
+#fadeout #n-1{
+    opacity: var(--n1);
+}
+
+input {
+    padding: 0;
+    margin: 0;
+}
+input:focus, textarea:focus{
+    outline: none;
+}
+#n {
+    font-family: hack;
+    font-size: 1em;
+    border: 0;
+    width: 100%;
+    height: 100px;
+    resize: none;
+    /* background-color: #fff; */
+    background-color: rgba(0, 0, 0, 0); border-color: rgba(0, 0, 0, 0)
+}
+#entry:before {
+    display: block;
+    position: relative;
+    top: 20px;
+    font-family: hack;
+    font-size: 1em;
+    content: '>';
+    width: 20px;
+    margin-left: -30px;
+    text-align: right;
+}
+#entry {
+    vertical-align: top;
+    margin-top: -20px;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}
