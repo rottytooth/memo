@@ -29,7 +29,33 @@ body {
     top: 0;
     right: 0;
     width: 33vw;
-    color: #a00;
+    color: #333;
+    padding: 1rem;
+    margin-right: 10px;
+
+    /* border-width: 3px;
+    border-style: solid;
+    border-image: 
+      linear-gradient(
+        to bottom, 
+        white,
+        #900
+      ); */
+}
+#state b {
+    display:block;
+    padding-left: 3px;
+}
+#state_table {
+    margin: 0;
+}
+td {
+    padding-right: 10px;
+}
+rd {
+    padding-left: 0;
+    margin: 0;
+    padding-right: 3px;
 }
 /* .varname_store {
     text-align: right;

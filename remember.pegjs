@@ -1,89 +1,123 @@
-Command = Remember / Asking / Saying
-
-Remember = "Remember" _ c:Loop {
-	return c;
-}
-
-Asking = ("A"/"a")"sking" _ "if" _ "they" _ e:ExpAnd t:Then? {
-	return {
-	    type: "cmd",
-    	name: "Asking",
-        exp: e,
-        then: t
-    };
-}
-
-Saying = ("s"/"S") "aying" _ e:ExpAnd {
-	return {
-	    type: "cmd",
-    	name: "Saying",
-        exp: e,
-    };
-}
-
-Then = "and" _ c:Command (_ ("when"/"if") _ "they" _ "do")? {
-	return c;
-}
-
-Loop = "counting" _ r:Range
 {
-	return {
-    	type: "cmd",
-    	name: "Loop",
-        exp: r
+	const clean_var = (input) => {
+    	input = input.trim().toLowerCase();
+		input = input.replace(new RegExp(/\bmy\b/,'gi'), 'your');
+		input = input.replace(new RegExp(/\bmine\b/,'gi'), 'yours');
+		input = input.replace(new RegExp(/\bmyself\b/,'gi'), 'yourself');
+		input = input.replace(new RegExp(/\bme\b/,'gi'), 'you');
+        return input;
     };
 }
 
-ExpAnd = e1:Expression _? "and" _ e2:(ExpAnd/Expression) {
+Command = c:(Print / Declare / Let / Reset) _* {
+	return c;
+}
+
+Reset = ("R"/"r")"emember" v:Variable {
 	return {
-    	type: "exp",
-    	name: "And",
-        exp: [e1,e2]
-    };
-} / Expression
-
-Expression = Themselves / Range / Boolean / Number
-
-Themselves = "themselves" / "their number"
-
-Boolean = DivideEvenly
-
-DivideEvenly = "divide" _ ("evenly" _)? "by" _ e:Expression {
-	return {
-    	type: "exp",
-    	name: "DivideEvenly",
-        exp: e
+    	cmd: "reset",
+        varname: v.varname,
+        all_vars: [v.varname]
     };
 }
 
-Range = ("from" _)? f:Number "to" _ t:Number {
+Declare = ("R"/"r")"emember" _ v:Variable _ ("as an"/"as a") _ t:Type {
 	return {
-    	type: "exp",
-    	name: "Range",
-        from: f,
-        to: t
+    	cmd: "declare",
+        varname: v.varname,
+        all_vars: [v.varname],
+        type: t
     };
-}
-    
-Number = d:Digit {
-	return { 
-    	type: "exp",
-    	name: "number",
-    	value: d 
+} 
+
+Let = ("R"/"r")"emember" _ v:Variable _ "as" exp:Expression {
+	return {
+    	cmd: "let",
+        varname: v.varname,
+        all_vars: [v.varname],
+        exp: exp
     };
 }
 
-Digit = 
-  	"one" _? { return 1; } /
-  	"two" _? { return 2; } / 
-    "three" _? { return 3; } /
-    "four" _? { return 4; } /
-    "five" _? { return 5; } /
-    "six" _? { return 6; } /
-    "seven" _? { return 7; } /
-    "eight" _? { return 8; } /
-    "nine" _? { return 9; } /
-    "ten" _? { return 10; } /
-    (("a"/"one") _)? "hundred" _? { return 100; }
+Type = f:(("I"/"i")"nt" ("eger")?/("F"/"f")"loat"/("S"/"s")"tring"/("A"/"a")"rray"/("C"/"c")"har" ("acter")?) {
+	return f.join("").toLowerCase();
+} / $(.*) {
+	return "undetermined"
+}
 
+Print = ("T"/"t")"ell me" (_ "about")? _ exp:Variable {
+	return {
+    	cmd: "print",
+        exp: exp
+    };
+}
+
+Expression = _ v:(Value / Variable) {
+	return v;
+}
+/*/ exp:$(![\r\n] .)* {
+	return exp;
+}*/
+
+Value = Float / Integer / Char / String
+
+String  = '"' chars:DoubleStringCharacter* '"' { 
+  return {
+  	class: "value",
+  	type: "string",
+  	value: chars.join('')
+    };
+}
+
+Char = "'" char:SingleStringCharacter "'" { 
+  return {
+  	class: "value",
+  	type: "char",
+  	value: char
+    };
+}
+
+DoubleStringCharacter
+  = !('"' / "\\") char:. { return char; }
+  / "\\" sequence:EscapeSequence { return sequence; }
+
+SingleStringCharacter
+  = !("'" / "\\") char:. { return char; }
+  / "\\" sequence:EscapeSequence { return sequence; }
+
+EscapeSequence
+  = "'"
+  / '"'
+  / "\\"
+  / "b"  { return "\b";   }
+  / "f"  { return "\f";   }
+  / "n"  { return "\n";   }
+  / "r"  { return "\r";   }
+  / "t"  { return "\t";   }
+  / "v"  { return "\x0B"; }
+
+Integer "integer"  = [0-9]+ { 
+  
+    return {
+  	class: "value",
+  	type: "int",
+  	value: parseInt(text(), 10)
+    };
+
+}
+
+Float "float"  = [0-9]+ "." [0-9]+ { 
+  return {
+  	class: "value",
+  	type: "float",
+  	value: parseFloat(text(), 10)
+    };
+}
+
+Variable = v:$(!" as " .)* {
+	return {
+    type: "variable",
+    varname: clean_var(v)
+    };
+}
 _ "whitespace" = [\r\n \t]+

@@ -1,6 +1,6 @@
-oblivion.interpreter = {};
+remember.interpreter = {};
 
-oblivion.varlist = {};
+remember.varlist = {};
 
 (function(oi) {
     oi.eval_and_assign = function(ast) {
@@ -10,8 +10,8 @@ oblivion.varlist = {};
         let has_value = ("exp" in ast && ast.exp.value !== undefined);
 
         // cast to the type of the var
-        if(oblivion.varlist[ast.varname] !== undefined && ast.exp.type != oblivion.varlist[ast.varname].type) {
-            switch(oblivion.varlist[ast.varname].type) {
+        if(remember.varlist[ast.varname] !== undefined && ast.exp.type != remember.varlist[ast.varname].type) {
+            switch(remember.varlist[ast.varname].type) {
                 case "string":
                     ast.exp.value = ast.exp.value.toString();
                     break;
@@ -34,37 +34,37 @@ oblivion.varlist = {};
             
         }
 
-        oblivion.varlist[ast.varname] = 
+        remember.varlist[ast.varname] = 
         {
             type: ast.type ?? ast.exp.type,
             value: has_value ? ast.exp.value : undefined,
             fade: 1,
         }
-        oblivion.varlist[ast.varname].formatted_value = () => {
-            switch(oblivion.varlist[ast.varname].type) {
+        remember.varlist[ast.varname].formatted_value = () => {
+            switch(remember.varlist[ast.varname].type) {
                 case "int":
                 case "float":
                 default:
-                    return oblivion.varlist[ast.varname].value;
+                    return remember.varlist[ast.varname].value;
                 case "string":
-                    return `"${oblivion.varlist[ast.varname].value}"`
+                    return `"${remember.varlist[ast.varname].value}"`
                 case "float":
-                    return `'${oblivion.varlist[ast.varname].value}'`
+                    return `'${remember.varlist[ast.varname].value}'`
             }
         }
         if (has_value)
-            return `I will remember ${ast.varname} as ${oblivion.varlist[ast.varname].formatted_value()}.`;
+            return `I will remember ${ast.varname} as ${remember.varlist[ast.varname].formatted_value()}.`;
         else
             return `I will remember ${ast.varname}.`;
     }
     oi.eval_cmd = function(ast) {
         switch(ast.cmd) {
             case "reset":
-                return `I remember ${ast.varname} as ${oblivion.varlist[ast.varname].formatted_value()}.`;
+                return `I remember ${ast.varname} as ${remember.varlist[ast.varname].formatted_value()}.`;
             case "declare":
-                if (ast.varname in oblivion.varlist) {
+                if (ast.varname in remember.varlist) {
                     // varname is already there, can't re-declare
-                    return `I remember ${ast.varname} as ${oblivion.varlist[ast.varname].formatted_value()}.`;
+                    return `I remember ${ast.varname} as ${remember.varlist[ast.varname].formatted_value()}.`;
                 } else if (ast.type == "undetermined") {
                     // not a valid type
                     return `I can't tell what you want ${ast.varname} to be.`;
@@ -72,24 +72,24 @@ oblivion.varlist = {};
                     return oi.eval_and_assign(ast);
                 }
             case "let": 
-                if (!(ast.varname in oblivion.varlist)) {
+                if (!(ast.varname in remember.varlist)) {
                     // varname is not there yet, need to declare and then assign
                     return oi.eval_and_assign(ast);
                 }
                 return oi.eval_and_assign(ast);
             case "print":
-                if (!(ast.varname in oblivion.varlist)) {
+                if (!(ast.varname in remember.varlist)) {
                     return `Hmm I don't remember ${ast.varname}.`;
                 }
-                return `"${oblivion.varlist[ast.varname]}"`;
+                return `"${remember.varlist[ast.varname]}"`;
         }
     }
     const fade_vars = (ast) => {
-        for (const key in oblivion.varlist) {
+        for (const key in remember.varlist) {
             if (!ast || ast.all_vars.indexOf(key) == -1) {
-                oblivion.varlist[key].fade++;
-                if (oblivion.varlist[key].fade > 11) {
-                    delete oblivion.varlist[key];
+                remember.varlist[key].fade++;
+                if (remember.varlist[key].fade > 11) {
+                    delete remember.varlist[key];
                 }
             }
         }
@@ -98,7 +98,7 @@ oblivion.varlist = {};
         let ast;
 
         try {
-            ast = oblivion.parser.parse(input);
+            ast = remember.parser.parse(input);
         } catch (e) {
             fade_vars();
             return "I didn't understand that.";
@@ -111,4 +111,4 @@ oblivion.varlist = {};
         return response;
     }
 
-})(oblivion.interpreter);
+})(remember.interpreter);
