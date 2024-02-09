@@ -78,15 +78,17 @@ remember.varlist = {};
                 }
                 return oi.eval_and_assign(ast);
             case "print":
-                if (!(ast.varname in remember.varlist)) {
-                    return `Hmm I don't remember ${ast.varname}.`;
+                // this exp needs to actually be evaluated, currently assumes
+                // the exp is just a variable
+                if (!(ast.exp.varname in remember.varlist)) {
+                    return `Hmm I don't remember ${ast.exp.varname}.`;
                 }
-                return `"${remember.varlist[ast.varname]}"`;
+                return `"${remember.varlist[ast.exp.varname].value}"`;
         }
     }
     const fade_vars = (ast) => {
         for (const key in remember.varlist) {
-            if (!ast || ast.all_vars.indexOf(key) == -1) {
+            if (!ast || !ast.all_vars || ast.all_vars.indexOf(key) == -1) {
                 remember.varlist[key].fade++;
                 if (remember.varlist[key].fade > 11) {
                     delete remember.varlist[key];

@@ -23,6 +23,17 @@ body {
     margin: 0;
     background-color: #fff;
     font-family: hack;
+    font-size: 16px;
+}
+h1 {
+    font-size: 16px;
+    font-weight: bold;
+}
+a, a:visited {
+    color: #000;
+    text-decoration: none;
+    font-weight: bold;
+    cursor: pointer;
 }
 #state {
     position: absolute;
@@ -32,6 +43,7 @@ body {
     color: #333;
     padding: 1rem;
     margin-right: 10px;
+    z-index: 100;
 
     /* border-width: 3px;
     border-style: solid;
@@ -42,20 +54,16 @@ body {
         #900
       ); */
 }
-#state b {
-    display:block;
-    padding-left: 3px;
-}
 #state_table {
     margin: 0;
 }
 td {
     padding-right: 10px;
-}
-rd {
     padding-left: 0;
     margin: 0;
-    padding-right: 3px;
+}
+td.right_td {
+    text-align: right;
 }
 /* .varname_store {
     text-align: right;
@@ -168,4 +176,48 @@ input:focus, textarea:focus{
     width: 80%;
     margin-left: auto;
     margin-right: auto;
+}
+#modal {
+	position: fixed;
+	z-index: 999;
+	padding: 50px 0 50px 0;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+    display: none;
+	background-color: rgba(154, 153, 153, 0.1);
+}
+
+#modal_content {
+	width: 50%;
+    border: 2px solid #ccc;
+    background-color: var(--panel-back);
+    color: var(--main-txt-color);
+	margin: auto;
+	padding: 30px;
+	border-radius: 10px;
+	overflow: hidden;
+	text-align: center;
+	box-shadow: 1px 1px 14px 3px rgba(154, 153, 153,0.25);	
+    pointer-events: all;
+    z-index: 9900;
+}
+#modal_content p {
+    width: 100%;
+    text-align: left;
+}
+.close {
+	color: #aaa;
+	float: right;
+    margin-top: -15px;
+	font-size: 30px;
+	font-weight: 700
+}
+.close:focus,
+.close:hover {
+	color: #000;
+	text-decoration: none;
+	cursor: pointer
 }

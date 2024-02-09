@@ -3,17 +3,37 @@
 <head>
     <meta charset="utf-8" />
     <link href="styles.css" rel="stylesheet" />
-    <!-- <script src="interpreter.js" type="text/javascript"></script> -->
-    <script type="text/javascript">const oblivion = [];</script>
     <script src="remember.js" type="text/javascript"></script>
     <script src="remember.parser.js" type="text/javascript"></script>
     <script src="remember.interpreter.js" type="text/javascript"></script>
     <script src="script.js" type="text/javascript"></script>
-    <title>remember</title>
+    <title>[] remember</title>
+    <script type="text/javascript">
+
+    function open_modal() {
+        var modal = document.getElementById("modal");
+        var modal_content = document.getElementById("modal_content");
+        modal.style.display = "block";
+        modal_content.style.display = "block";
+    }
+
+    function close_modal(e) {
+       var modal = document.getElementById("modal");
+       var modal_content = document.getElementById("modal");
+       modal.style.display = "none";
+       modal_content.style.display = "none";
+    }
+
+    window.addEventListener("load", function() {
+        document.getElementsByTagName("body")[0].onclick = close_modal;
+        document.getElementById("modal").onclick = () => {return true;};
+        document.getElementById("close").onclick = close_modal;
+    });
+    </script>
 </head>
 <body>
     <div id="state">
-        <b>[remember]</b><br/>
+        <h1><a href="javascript:open_modal();">[] remember</a></h1><br/>
         <table id="state_table"><tbody></tbody></table>
     </div>
     <div id="box">
@@ -35,5 +55,10 @@
         <div id="entry"><textarea type="text" id="n" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea></div>
         </div>
         <div id="filler"></div>
+    </div>
+    <div id="modal"><div id="modal_content"><span class="close" id='close'>&times;</span>[] remember<br/>
+        <p>A programming language where the last 12 lines are remembered. See more esolangs at https://danieltemkin.com/Esolangs.</p>
+        <p>Write commands like:</p>
+        <p>Remember p as 1, 2, 3</p>
     </div>
 </body></html>

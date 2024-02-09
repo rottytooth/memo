@@ -16,9 +16,12 @@ const updateStateList = () => {
     let tbody = document.createElement('tbody');
     for (const key in remember.varlist) {
         let row = tbody.insertRow();
+        let lead = row.insertCell();
+        lead.innerText = "I remember";
+        lead.className = "varname_store"
         let varname = row.insertCell();
-        varname.innerText = `I remember ${key}`;
-        varname.className = "varname_store"
+        varname.innerText = key;
+        varname.className = "right_td"
         let varvalue = row.insertCell();
         varvalue.innerText = `as ${remember.varlist[key].formatted_value()}.`;
         row.style.opacity = `var(--n${remember.varlist[key].fade})`;

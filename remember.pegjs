@@ -1,6 +1,6 @@
 {
 	const clean_var = (input) => {
-    	input = input.trim().toLowerCase();
+        input = input.trim().toLowerCase();
 		input = input.replace(new RegExp(/\bmy\b/,'gi'), 'your');
 		input = input.replace(new RegExp(/\bmine\b/,'gi'), 'yours');
 		input = input.replace(new RegExp(/\bmyself\b/,'gi'), 'yourself');
@@ -28,7 +28,7 @@ Declare = ("R"/"r")"emember" _ v:Variable _ ("as an"/"as a") _ t:Type {
         all_vars: [v.varname],
         type: t
     };
-} 
+}
 
 Let = ("R"/"r")"emember" _ v:Variable _ "as" exp:Expression {
 	return {
@@ -52,72 +52,89 @@ Print = ("T"/"t")"ell me" (_ "about")? _ exp:Variable {
     };
 }
 
-Expression = _ v:(Value / Variable) {
+/*
+  Expressions
+*/
+
+Expression = _ v:(Value / Variable / SExpression) {
 	return v;
 }
-/*/ exp:$(![\r\n] .)* {
-	return exp;
-}*/
 
 Value = Float / Integer / Char / String
 
-String  = '"' chars:DoubleStringCharacter* '"' { 
-  return {
-  	class: "value",
-  	type: "string",
-  	value: chars.join('')
+SExpression = _? "(" _? a:Atom* ")" _? {
+	return {
+        class: "exp",
+        type: "SExpression",
+        value: a
+  };
+}
+
+Atom = e:(Expression) _? {
+    return {
+        class: "exp",
+        type: "atom",
+        value: e
+    }
+}
+
+String  = '"' chars:DoubleStringCharacter* '"' {
+    return {
+        class: "value",
+        type: "string",
+        value: chars.join('')
     };
 }
 
-Char = "'" char:SingleStringCharacter "'" { 
-  return {
-  	class: "value",
-  	type: "char",
-  	value: char
+Char = "'" char:SingleStringCharacter "'" {
+    return {
+        class: "value",
+        type: "char",
+        value: char
     };
 }
 
 DoubleStringCharacter
-  = !('"' / "\\") char:. { return char; }
-  / "\\" sequence:EscapeSequence { return sequence; }
+    = !('"' / "\\") char:. { return char; }
+    / "\\" sequence:EscapeSequence { return sequence; }
 
 SingleStringCharacter
-  = !("'" / "\\") char:. { return char; }
-  / "\\" sequence:EscapeSequence { return sequence; }
+    = !("'" / "\\") char:. { return char; }
+    / "\\" sequence:EscapeSequence { return sequence; }
 
 EscapeSequence
-  = "'"
-  / '"'
-  / "\\"
-  / "b"  { return "\b";   }
-  / "f"  { return "\f";   }
-  / "n"  { return "\n";   }
-  / "r"  { return "\r";   }
-  / "t"  { return "\t";   }
-  / "v"  { return "\x0B"; }
+    = "'"
+    / '"'
+    / "\\"
+    / "b"  { return "\b";   }
+    / "f"  { return "\f";   }
+    / "n"  { return "\n";   }
+    / "r"  { return "\r";   }
+    / "t"  { return "\t";   }
+    / "v"  { return "\x0B"; }
 
-Integer "integer"  = [0-9]+ { 
-  
+Integer "integer" = [0-9]+ {
     return {
-  	class: "value",
-  	type: "int",
-  	value: parseInt(text(), 10)
+        class: "value",
+        type: "int",
+        value: parseInt(text(), 10)
     };
 
 }
 
-Float "float"  = [0-9]+ "." [0-9]+ { 
+Float "float"  = [0-9]+ "." [0-9]+ {
   return {
-  	class: "value",
-  	type: "float",
-  	value: parseFloat(text(), 10)
+        class: "value",
+        type: "float",
+        value: parseFloat(text(), 10)
     };
 }
 
 Variable = v:$(!" as " .)* {
 	return {
-    type: "variable",
-    varname: clean_var(v)
+        type: "variable",
+        varname: v
     };
 }
+
 _ "whitespace" = [\r\n \t]+
