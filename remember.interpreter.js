@@ -3,9 +3,54 @@ remember.interpreter = {};
 remember.varlist = {};
 
 (function(oi) {
+
+    oi.ids_reffed = function(node, vars) {
+        if (vars == null) {
+            vars = [];
+        }
+        if (node.type == "variable") {
+            if (!vars.includes(node.varname))
+                vars.push(node.varname);
+        }
+        
+        if (Object.hasOwn(node, 'exp'))
+            oi.ids_reffed(node.exp, vars);
+        if (Object.hasOwn(node, 'left'))
+            oi.ids_reffed(node.left, vars);
+        if (Object.hasOwn(node, 'right'))
+            oi.ids_reffed(node.right, vars);
+
+        return vars;
+    }
+
+    oi.eval_exp = function(node) {
+        switch(node.type) {
+            case "Addition":
+                return (oi.eval_exp(node.left) + oi.eval_exp(node.right));
+            case "Subtraction":
+                return (oi.eval_exp(node.left) - oi.eval_exp(node.right));
+            case "Multiplication":
+                return (oi.eval_exp(node.left) * oi.eval_exp(node.right));
+            case "Division":
+                return (oi.eval_exp(node.left) * oi.eval_exp(node.right));  
+            case "IntLiteral":
+            case "CharLiteral":
+            case "StringLiteral":
+                return node.value;
+        }
+    }
     oi.eval_and_assign = function(ast) {
         // FIXME: right now, this all assumes we're assigning a value
         // we need to evaluate expression first in the real scenario
+
+        let ids = oi.ids_reffed(ast);
+
+        if ("exp" in ast) {
+            oi.eval_exp(ast.exp)
+        } else {
+            // there is no expression or we are not in the right node
+            throw new Error("Could not find expression to evaluate");
+        }
 
         let has_value = ("exp" in ast && ast.exp.value !== undefined);
 
@@ -38,6 +83,7 @@ remember.varlist = {};
         {
             type: ast.type ?? ast.exp.type,
             value: has_value ? ast.exp.value : undefined,
+            depends_on: 'x',
             fade: 1,
         }
         remember.varlist[ast.varname].formatted_value = () => {
@@ -61,16 +107,7 @@ remember.varlist = {};
         switch(ast.cmd) {
             case "reset":
                 return `I remember ${ast.varname} as ${remember.varlist[ast.varname].formatted_value()}.`;
-            case "declare":
-                if (ast.varname in remember.varlist) {
-                    // varname is already there, can't re-declare
-                    return `I remember ${ast.varname} as ${remember.varlist[ast.varname].formatted_value()}.`;
-                } else if (ast.type == "undetermined") {
-                    // not a valid type
-                    return `I can't tell what you want ${ast.varname} to be.`;
-                } else {
-                    return oi.eval_and_assign(ast);
-                }
+
             case "let": 
                 if (!(ast.varname in remember.varlist)) {
                     // varname is not there yet, need to declare and then assign
@@ -99,11 +136,14 @@ remember.varlist = {};
     oi.parse = function(input) {
         let ast;
 
+        input = input.trim();
+
         try {
             ast = remember.parser.parse(input);
         } catch (e) {
             fade_vars();
-            return "I didn't understand that.";
+            return e;
+//            return "I didn't understand that.";
         }
 
         response = oi.eval_cmd(ast);
