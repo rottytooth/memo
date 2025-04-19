@@ -3,9 +3,22 @@
 <head>
     <meta charset="utf-8" />
     <link href="styles.css" rel="stylesheet" />
-    <script src="src/memo.js" type="text/javascript"></script>
-    <script src="src/memo.parser.js" type="text/javascript"></script>
-    <script src="src/memo.interpreter.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        const DEBUG = true;
+        const DEBUG_SCRIPTS = ['../src/memo.js', '../gen/memo.parser.js', '../src/memo.interpreter.js'];
+        const PROD_SCRIPT = ['memo.js'];
+
+        function loadScripts(debug) {
+            const scripts = debug ? DEBUG_SCRIPTS : PROD_SCRIPT;
+            scripts.forEach(src => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = false; // Ensure scripts are loaded in order
+                document.head.appendChild(script);
+            });
+        }
+        loadScripts(DEBUG);
+    </script>
     <script src="script.js" type="text/javascript"></script>
     <title>[]memo</title>
     <script type="text/javascript">

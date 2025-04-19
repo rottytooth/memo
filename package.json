@@ -7,6 +7,7 @@
   },
   "devDependencies": {
     "grunt": "^1.6.1",
+    "grunt-contrib-copy": "^1.0.0",
     "grunt-run": "^0.8.1",
     "peggy": "^4.2.0"
   }
