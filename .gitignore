@@ -2,3 +2,6 @@ old/*
 old
 fonts
 .DS_Store
+.vscode
+.vscode/*
+node_modules

@@ -1,0 +1,13 @@
+{
+  "author": "Daniel Temkin <dt@danieltemkin.com>",
+  "homepage": "https://danieltemkin.com/Esolangs/memo",
+  "license": "MIT",
+  "dependencies": {
+    "grunt-contrib-concat": "^2.1.0"
+  },
+  "devDependencies": {
+    "grunt": "^1.6.1",
+    "grunt-run": "^0.8.1",
+    "peggy": "^4.2.0"
+  }
+}

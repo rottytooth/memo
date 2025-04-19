@@ -1,6 +1,6 @@
-remember.interpreter = {};
+memo.interpreter = {};
 
-remember.varlist = {};
+memo.varlist = {};
 
 (function(oi) {
 
@@ -55,8 +55,8 @@ remember.varlist = {};
         let has_value = ("exp" in ast && ast.exp.value !== undefined);
 
         // cast to the type of the var
-        if(remember.varlist[ast.varname] !== undefined && ast.exp.type != remember.varlist[ast.varname].type) {
-            switch(remember.varlist[ast.varname].type) {
+        if(memo.varlist[ast.varname] !== undefined && ast.exp.type != memo.varlist[ast.varname].type) {
+            switch(memo.varlist[ast.varname].type) {
                 case "string":
                     ast.exp.value = ast.exp.value.toString();
                     break;
@@ -79,37 +79,37 @@ remember.varlist = {};
             
         }
 
-        remember.varlist[ast.varname] = 
+        memo.varlist[ast.varname] = 
         {
             type: ast.type ?? ast.exp.type,
             value: has_value ? ast.exp.value : undefined,
             depends_on: 'x',
             fade: 1,
         }
-        remember.varlist[ast.varname].formatted_value = () => {
-            switch(remember.varlist[ast.varname].type) {
+        memo.varlist[ast.varname].formatted_value = () => {
+            switch(memo.varlist[ast.varname].type) {
                 case "int":
                 case "float":
                 default:
-                    return remember.varlist[ast.varname].value;
+                    return memo.varlist[ast.varname].value;
                 case "string":
-                    return `"${remember.varlist[ast.varname].value}"`
+                    return `"${memo.varlist[ast.varname].value}"`
                 case "float":
-                    return `'${remember.varlist[ast.varname].value}'`
+                    return `'${memo.varlist[ast.varname].value}'`
             }
         }
         if (has_value)
-            return `I will remember ${ast.varname} as ${remember.varlist[ast.varname].formatted_value()}.`;
+            return `I will remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value()}.`;
         else
             return `I will remember ${ast.varname}.`;
     }
     oi.eval_cmd = function(ast) {
         switch(ast.cmd) {
             case "reset":
-                return `I remember ${ast.varname} as ${remember.varlist[ast.varname].formatted_value()}.`;
+                return `I remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value()}.`;
 
             case "let": 
-                if (!(ast.varname in remember.varlist)) {
+                if (!(ast.varname in memo.varlist)) {
                     // varname is not there yet, need to declare and then assign
                     return oi.eval_and_assign(ast);
                 }
@@ -117,18 +117,18 @@ remember.varlist = {};
             case "print":
                 // this exp needs to actually be evaluated, currently assumes
                 // the exp is just a variable
-                if (!(ast.exp.varname in remember.varlist)) {
+                if (!(ast.exp.varname in memo.varlist)) {
                     return `Hmm I don't remember ${ast.exp.varname}.`;
                 }
-                return `"${remember.varlist[ast.exp.varname].value}"`;
+                return `"${memo.varlist[ast.exp.varname].value}"`;
         }
     }
     const fade_vars = (ast) => {
-        for (const key in remember.varlist) {
+        for (const key in memo.varlist) {
             if (!ast || !ast.all_vars || ast.all_vars.indexOf(key) == -1) {
-                remember.varlist[key].fade++;
-                if (remember.varlist[key].fade > 11) {
-                    delete remember.varlist[key];
+                memo.varlist[key].fade++;
+                if (memo.varlist[key].fade > 11) {
+                    delete memo.varlist[key];
                 }
             }
         }
@@ -139,7 +139,7 @@ remember.varlist = {};
         input = input.trim();
 
         try {
-            ast = remember.parser.parse(input);
+            ast = memo.parser.parse(input);
         } catch (e) {
             fade_vars();
             return e;
@@ -153,4 +153,4 @@ remember.varlist = {};
         return response;
     }
 
-})(remember.interpreter);
+})(memo.interpreter);
