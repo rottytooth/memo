@@ -251,7 +251,7 @@ function peg$parse(input, options) {
   var peg$r4 = /^[Aa]/;
   var peg$r5 = /^[Cc]/;
   var peg$r6 = /^[Tt]/;
-  var peg$r7 = /^[a-zA-Z\xE4\xF6\xFC\xDF\xC4\xD6\xDC0-9_]/;
+  var peg$r7 = /^[a-zA-Z\xE4\xF6\xFC\xDF\xC4\xD6\xDC_]/;
   var peg$r8 = /^[Mm]/;
   var peg$r9 = /^[Hh]/;
   var peg$r10 = /^["\\]/;
@@ -281,7 +281,7 @@ function peg$parse(input, options) {
   var peg$e19 = peg$literalExpectation("about", false);
   var peg$e20 = peg$literalExpectation("(", false);
   var peg$e21 = peg$literalExpectation(")", false);
-  var peg$e22 = peg$classExpectation([["a", "z"], ["A", "Z"], "\xE4", "\xF6", "\xFC", "\xDF", "\xC4", "\xD6", "\xDC", ["0", "9"], "_"], false, false);
+  var peg$e22 = peg$classExpectation([["a", "z"], ["A", "Z"], "\xE4", "\xF6", "\xFC", "\xDF", "\xC4", "\xD6", "\xDC", "_"], false, false);
   var peg$e23 = peg$literalExpectation("plus", false);
   var peg$e24 = peg$literalExpectation("minus", false);
   var peg$e25 = peg$literalExpectation("times", false);
@@ -390,7 +390,7 @@ function peg$parse(input, options) {
 };
   var peg$f9 = function(v) {
 	return {
-        type: "variable",
+        type: "Variable",
         varname: v.join("")
     };
 };
@@ -422,7 +422,7 @@ function peg$parse(input, options) {
         if (element[1] === "times") { 
           return {
               class: "exp",
-              type: "Product",
+              type: "Multiplication",
               left: result,
               right: element[3]
           };

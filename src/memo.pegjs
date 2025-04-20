@@ -58,9 +58,9 @@ Atom = e:(Expression) _? {
 Identifier = IntLiteral {
 	throw new Error("Cannot assign a new value to a reserved name");
 }
-/ v:[a-zA-ZäöüßÄÖÜ0-9_]+ {
+/ v:[a-zA-ZäöüßÄÖÜ_]+ {
 	return {
-        type: "variable",
+        type: "Variable",
         varname: v.join("")
     };
 }
@@ -96,7 +96,7 @@ Term = head:Factor tail:(_ ("times" / "divided by") _ Factor)* {
         if (element[1] === "times") { 
           return {
               class: "exp",
-              type: "Product",
+              type: "Multiplication",
               left: result,
               right: element[3]
           };

@@ -252,7 +252,7 @@ function peg$parse(input, options) {
   var peg$r4 = /^[Aa]/;
   var peg$r5 = /^[Cc]/;
   var peg$r6 = /^[Tt]/;
-  var peg$r7 = /^[a-zA-Z\xE4\xF6\xFC\xDF\xC4\xD6\xDC0-9_]/;
+  var peg$r7 = /^[a-zA-Z\xE4\xF6\xFC\xDF\xC4\xD6\xDC_]/;
   var peg$r8 = /^[Mm]/;
   var peg$r9 = /^[Hh]/;
   var peg$r10 = /^["\\]/;
@@ -282,7 +282,7 @@ function peg$parse(input, options) {
   var peg$e19 = peg$literalExpectation("about", false);
   var peg$e20 = peg$literalExpectation("(", false);
   var peg$e21 = peg$literalExpectation(")", false);
-  var peg$e22 = peg$classExpectation([["a", "z"], ["A", "Z"], "\xE4", "\xF6", "\xFC", "\xDF", "\xC4", "\xD6", "\xDC", ["0", "9"], "_"], false, false);
+  var peg$e22 = peg$classExpectation([["a", "z"], ["A", "Z"], "\xE4", "\xF6", "\xFC", "\xDF", "\xC4", "\xD6", "\xDC", "_"], false, false);
   var peg$e23 = peg$literalExpectation("plus", false);
   var peg$e24 = peg$literalExpectation("minus", false);
   var peg$e25 = peg$literalExpectation("times", false);
@@ -391,7 +391,7 @@ function peg$parse(input, options) {
 };
   var peg$f9 = function(v) {
 	return {
-        type: "variable",
+        type: "Variable",
         varname: v.join("")
     };
 };
@@ -423,7 +423,7 @@ function peg$parse(input, options) {
         if (element[1] === "times") { 
           return {
               class: "exp",
-              type: "Product",
+              type: "Multiplication",
               left: result,
               right: element[3]
           };
@@ -2874,7 +2874,7 @@ memo.varlist = {};
         if (vars == null) {
             vars = [];
         }
-        if (node.type == "variable") {
+        if (node.type === "Variable") {
             if (!vars.includes(node.varname))
                 vars.push(node.varname);
         }
@@ -2887,6 +2887,19 @@ memo.varlist = {};
             oi.ids_reffed(node.right, vars);
 
         return vars;
+    }
+
+    oi.has_variable_type = function(node) {
+        if (!node) return false;
+
+        if (node.type === "Variable") {
+            return true;
+        }
+    
+        const leftHasVariable = node.left ? oi.has_variable_type(node.left) : false;
+        const rightHasVariable = node.right ? oi.has_variable_type(node.right) : false;
+    
+        return leftHasVariable || rightHasVariable;    
     }
 
     oi.eval_exp = function(node) {
@@ -2912,7 +2925,11 @@ memo.varlist = {};
         let ids = oi.ids_reffed(ast);
 
         if ("exp" in ast) {
-            oi.eval_exp(ast.exp)
+            if (oi.has_variable_type(ast.exp)) {
+                ast.type = "Lambda";
+            } else {
+                evaluation = oi.eval_exp(ast.exp);
+            }
         } else {
             // there is no expression or we are not in the right node
             throw new Error("Could not find expression to evaluate");
@@ -2920,7 +2937,10 @@ memo.varlist = {};
 
         let has_value = ("exp" in ast && ast.exp.value !== undefined);
 
+
+
         // cast to the type of the var
+        // FIXME: do we need to do this though??
         if(memo.varlist[ast.varname] !== undefined && ast.exp.type != memo.varlist[ast.varname].type) {
             switch(memo.varlist[ast.varname].type) {
                 case "string":
@@ -2949,19 +2969,24 @@ memo.varlist = {};
         {
             type: ast.type ?? ast.exp.type,
             value: has_value ? ast.exp.value : undefined,
+            exp: ast.exp,
             depends_on: 'x',
             fade: 1,
         }
         memo.varlist[ast.varname].formatted_value = () => {
             switch(memo.varlist[ast.varname].type) {
                 case "int":
-                case "float":
+                case "IntLiteral":
+                    return memo.tools.num_to_str(memo.varlist[ast.varname].value);
+                case "float": //FIXME: will this exist?
                 default:
                     return memo.varlist[ast.varname].value;
                 case "string":
-                    return `"${memo.varlist[ast.varname].value}"`
-                case "float":
-                    return `'${memo.varlist[ast.varname].value}'`
+                    return `"${memo.varlist[ast.varname].value}"`;
+                case "char": //FIXME: will this exist?
+                    return `'${memo.varlist[ast.varname].value}'`;
+                case "Lambda":
+                    return memo.tools.lambda_to_str(memo.varlist[ast.varname].exp);
             }
         }
         if (has_value)
@@ -2986,9 +3011,15 @@ memo.varlist = {};
                 if (!(ast.exp.varname in memo.varlist)) {
                     return `Hmm I don't remember ${ast.exp.varname}.`;
                 }
-                return `"${memo.varlist[ast.exp.varname].value}"`;
+                return capitalize(memo.varlist[ast.exp.varname].formatted_value());
         }
     }
+    
+    const capitalize = (str) => {
+        if (!str || typeof str !== "string") return "";
+
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() + ".";
+    };
     const fade_vars = (ast) => {
         for (const key in memo.varlist) {
             if (!ast || !ast.all_vars || ast.all_vars.indexOf(key) == -1) {
@@ -3008,8 +3039,11 @@ memo.varlist = {};
             ast = memo.parser.parse(input);
         } catch (e) {
             fade_vars();
-            return e;
-//            return "I didn't understand that.";
+            if (e.name == "SyntaxError") {
+                return `I didn't understand ${e.found}.`;
+            } else {
+                return `I ran into an internal issue: ${e}`;
+            }
         }
 
         response = oi.eval_cmd(ast);

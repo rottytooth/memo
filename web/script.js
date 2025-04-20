@@ -4,7 +4,7 @@ const fadeOut = (text) => {
             document.getElementById("n-" + i).innerHTML = document.getElementById("n-" + (i - 1)).innerHTML;
         }
     }
-    document.getElementById("n-1").innerHTML = text;
+    document.getElementById("n-1").innerHTML = text.toLowerCase();
 
     setTimeout(() => {
         addResponse(text);
@@ -39,6 +39,7 @@ const updateStateList = () => {
 const addResponse = (text) => {
     let newSpan = document.createElement('span');
     newSpan.className = "response";
+    text = text.toLowerCase();
     let reply = memo.interpreter.parse(text);
     newSpan.innerText = reply;
     document.getElementById("n-1").appendChild(newSpan);

@@ -8,7 +8,7 @@ memo.varlist = {};
         if (vars == null) {
             vars = [];
         }
-        if (node.type == "variable") {
+        if (node.type === "Variable") {
             if (!vars.includes(node.varname))
                 vars.push(node.varname);
         }
@@ -22,6 +22,46 @@ memo.varlist = {};
 
         return vars;
     }
+
+    oi.get_dependencies = function(node) {
+        if (!node) return [];
+
+        if (node.type === "Variable") {
+            return [node.varname];
+        }
+    
+        return oi.get_dependencies(node.left).concat(oi.get_dependencies(node.right));
+    }
+
+    oi.find_circular_dependencies = function(ast, visited = new Set(), stack = new Set()) {
+        if (!ast || !ast.varname) return false;
+
+        if (stack.has(ast.varname)) {
+            // Circular dependency detected
+            return true;
+        }
+
+        if (visited.has(ast.varname)) {
+            // Already checked this variable, no circular dependency
+            return false;
+        }
+
+        // Mark the current variable as visited and add it to the stack
+        visited.add(ast.varname);
+        stack.add(ast.varname);
+
+        const dependencies = memo.varlist[ast.varname]?.depends_on || ast.deps || [];
+        for (const dep of dependencies) {
+            if (oi.find_circular_dependencies({ varname: dep }, visited, stack)) {
+                return true;
+            }
+        }
+
+        // Remove the current variable from the stack
+        stack.delete(ast.varname);
+
+        return false;
+    };
 
     oi.eval_exp = function(node) {
         switch(node.type) {
@@ -39,6 +79,7 @@ memo.varlist = {};
                 return node.value;
         }
     }
+    
     oi.eval_and_assign = function(ast) {
         // FIXME: right now, this all assumes we're assigning a value
         // we need to evaluate expression first in the real scenario
@@ -46,15 +87,24 @@ memo.varlist = {};
         let ids = oi.ids_reffed(ast);
 
         if ("exp" in ast) {
-            oi.eval_exp(ast.exp)
+            ast.deps = oi.get_dependencies(ast.exp);
+            if (ast.deps.length > 0) {
+                ast.type = "Lambda";
+            } else {
+                ast.value = oi.eval_exp(ast.exp);
+            }
         } else {
             // there is no expression or we are not in the right node
             throw new Error("Could not find expression to evaluate");
         }
 
-        let has_value = ("exp" in ast && ast.exp.value !== undefined);
+        // find circular dependencies
+        if (oi.find_circular_dependencies(ast)) {
+            return `I can't make sense of ${ast.varname}.`;
+        }
 
         // cast to the type of the var
+        // FIXME: do we need to do this though??
         if(memo.varlist[ast.varname] !== undefined && ast.exp.type != memo.varlist[ast.varname].type) {
             switch(memo.varlist[ast.varname].type) {
                 case "string":
@@ -82,23 +132,29 @@ memo.varlist = {};
         memo.varlist[ast.varname] = 
         {
             type: ast.type ?? ast.exp.type,
-            value: has_value ? ast.exp.value : undefined,
-            depends_on: 'x',
+            value: ast.exp.value || undefined,
+            exp: ast.exp,
+            depends_on: ast.deps,
             fade: 1,
         }
+
         memo.varlist[ast.varname].formatted_value = () => {
             switch(memo.varlist[ast.varname].type) {
                 case "int":
-                case "float":
+                case "IntLiteral":
+                    return memo.tools.num_to_str(memo.varlist[ast.varname].value);
+                case "float": //FIXME: will this exist?
                 default:
                     return memo.varlist[ast.varname].value;
                 case "string":
-                    return `"${memo.varlist[ast.varname].value}"`
-                case "float":
-                    return `'${memo.varlist[ast.varname].value}'`
+                    return `"${memo.varlist[ast.varname].value}"`;
+                case "char": //FIXME: will this exist?
+                    return `'${memo.varlist[ast.varname].value}'`;
+                case "Lambda":
+                    return memo.tools.lambda_to_str(memo.varlist[ast.varname].exp);
             }
         }
-        if (has_value)
+        if (ast.exp.value)
             return `I will remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value()}.`;
         else
             return `I will remember ${ast.varname}.`;
@@ -120,9 +176,15 @@ memo.varlist = {};
                 if (!(ast.exp.varname in memo.varlist)) {
                     return `Hmm I don't remember ${ast.exp.varname}.`;
                 }
-                return `"${memo.varlist[ast.exp.varname].value}"`;
+                return capitalize(memo.varlist[ast.exp.varname].formatted_value());
         }
     }
+    
+    const capitalize = (str) => {
+        if (!str || typeof str !== "string") return "";
+
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() + ".";
+    };
     const fade_vars = (ast) => {
         for (const key in memo.varlist) {
             if (!ast || !ast.all_vars || ast.all_vars.indexOf(key) == -1) {
@@ -142,8 +204,11 @@ memo.varlist = {};
             ast = memo.parser.parse(input);
         } catch (e) {
             fade_vars();
-            return e;
-//            return "I didn't understand that.";
+            if (e.name == "SyntaxError") {
+                return `I didn't understand ${e.found}.`;
+            } else {
+                return `I ran into an internal issue: ${e}`;
+            }
         }
 
         response = oi.eval_cmd(ast);

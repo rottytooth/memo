@@ -1,6 +1,6 @@
 module.exports = function(grunt) {
 
-	grunt.initConfig({
+    grunt.initConfig({
         copy: {
             main: {
               files: [
@@ -8,20 +8,17 @@ module.exports = function(grunt) {
               ],
             },
         },
-	    concat: {
-			options: {
-				separator: '\n'
-			},
-			dist : {
-				src: ['src/memo.js','gen/memo.parser.js','src/memo.interpreter.js'],
-				dest: 'memo.js'
-				},
-		},
-        run: {
+        concat: {
             options: {
-              // Task-specific options go here.
+              separator: '\n'
             },
-            your_target: {
+            dist : {
+              src: ['src/memo.js','memo.tools.js','gen/memo.parser.js','src/memo.interpreter.js'],
+              dest: 'memo.js'
+            },
+        },
+        run: {
+            peggy: {
               cmd: 'npx',
               args: [
                 'peggy','-o',
@@ -32,10 +29,10 @@ module.exports = function(grunt) {
               ]
             }
           }
-	});
+    });
 
-	grunt.loadNpmTasks('grunt-contrib-concat');
+    grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-run');
     grunt.loadNpmTasks('grunt-contrib-copy');
-	grunt.registerTask('build', ['run', 'concat', 'copy']);
+    grunt.registerTask('build', ['run', 'concat', 'copy']);
 };
