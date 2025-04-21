@@ -4,25 +4,6 @@ memo.varlist = {};
 
 (function(oi) {
 
-    oi.ids_reffed = function(node, vars) {
-        if (vars == null) {
-            vars = [];
-        }
-        if (node.type === "Variable") {
-            if (!vars.includes(node.varname))
-                vars.push(node.varname);
-        }
-        
-        if (Object.hasOwn(node, 'exp'))
-            oi.ids_reffed(node.exp, vars);
-        if (Object.hasOwn(node, 'left'))
-            oi.ids_reffed(node.left, vars);
-        if (Object.hasOwn(node, 'right'))
-            oi.ids_reffed(node.right, vars);
-
-        return vars;
-    }
-
     oi.get_dependencies = function(node) {
         if (!node) return [];
 
@@ -50,7 +31,10 @@ memo.varlist = {};
         visited.add(ast.varname);
         stack.add(ast.varname);
 
-        const dependencies = memo.varlist[ast.varname]?.depends_on || ast.deps || [];
+        let dependencies = memo.varlist[ast.varname]?.depends_on
+        if (!Array.isArray(dependencies) || dependencies.length === 0) {
+            dependencies = ast.deps || [];
+        }
         for (const dep of dependencies) {
             if (oi.find_circular_dependencies({ varname: dep }, visited, stack)) {
                 return true;
@@ -72,30 +56,59 @@ memo.varlist = {};
             case "Multiplication":
                 return (oi.eval_exp(node.left) * oi.eval_exp(node.right));
             case "Division":
-                return (oi.eval_exp(node.left) * oi.eval_exp(node.right));  
+                return (oi.eval_exp(node.left) / oi.eval_exp(node.right));  
             case "IntLiteral":
             case "CharLiteral":
             case "StringLiteral":
                 return node.value;
         }
     }
+
+    oi.determine_type = function(ast) {
+        const attempt_int = parseInt(ast.value);
+        const attempt_float = parseFloat(ast.value);
+        
+        if (!isNaN(attempt_int) && attempt_int == attempt_float) {
+            ast.value = attempt_int;
+            ast.type = "IntLiteral";
+            return;
+        }
+        // if (typeof(ast.value) == "int") {
+        //     ast.type = "IntLiteral";
+        //     return;
+        // }
+        if (!isNaN(attempt_float)) {
+            ast.value = attempt_float;
+            ast.type = "FloatLiteral";
+            return;
+        }
+        // if (typeof(ast.value) == "float") {
+        //     ast.type = "FloatLiteral";
+        //     return;
+        // }
+        if (typeof(ast.value) == "string") {
+            if (ast.value.length == 1) {
+                ast.type = "CharLiteral";
+                return;
+            }
+            
+            ast.type = "StringLiteral";
+            return;
+        }
+    }
     
     oi.eval_and_assign = function(ast) {
-        // FIXME: right now, this all assumes we're assigning a value
-        // we need to evaluate expression first in the real scenario
-
-        let ids = oi.ids_reffed(ast);
-
         if ("exp" in ast) {
             ast.deps = oi.get_dependencies(ast.exp);
             if (ast.deps.length > 0) {
                 ast.type = "Lambda";
             } else {
-                ast.value = oi.eval_exp(ast.exp);
+                ast.exp.value = oi.eval_exp(ast.exp);
+                oi.determine_type(ast.exp);
             }
         } else {
             // there is no expression or we are not in the right node
-            throw new Error("Could not find expression to evaluate");
+            return "I can't think of the thing I'm supposed to evaluate.";
         }
 
         // find circular dependencies
@@ -103,36 +116,11 @@ memo.varlist = {};
             return `I can't make sense of ${ast.varname}.`;
         }
 
-        // cast to the type of the var
-        // FIXME: do we need to do this though??
-        if(memo.varlist[ast.varname] !== undefined && ast.exp.type != memo.varlist[ast.varname].type) {
-            switch(memo.varlist[ast.varname].type) {
-                case "string":
-                    ast.exp.value = ast.exp.value.toString();
-                    break;
-                case "float":
-                    let attempt_float = parseFloat(ast.exp.value);
-                    if (isNaN(attempt_float))
-                        return `I remember ${ast.varname} differently.`;
-                    ast.exp.value = attempt_float;
-                    break;
-                case "int":
-                    let attempt_int = parseFloat(ast.exp.value);
-                    if (isNaN(attempt_int))
-                        return `I remember ${ast.varname} differently.`;
-                    ast.exp.value = attempt_int;
-                    break;
-                case "char":
-                    ast.exp.value = ast.exp.value.toString()[0];
-                    break;
-            }
-            
-        }
-
         memo.varlist[ast.varname] = 
         {
             type: ast.type ?? ast.exp.type,
             value: ast.exp.value || undefined,
+            has_value: !!ast.exp.value,
             exp: ast.exp,
             depends_on: ast.deps,
             fade: 1,
@@ -144,14 +132,35 @@ memo.varlist = {};
                 case "IntLiteral":
                     return memo.tools.num_to_str(memo.varlist[ast.varname].value);
                 case "float": //FIXME: will this exist?
-                default:
-                    return memo.varlist[ast.varname].value;
+                case "FloatLiteral":
+                    const numStr = String(memo.varlist[ast.varname].value);
+                    const wholePart = numStr.split('.')[0];
+                    const decimalPart = numStr.split('.')[1];
+                    const floatPart = decimalPart ? parseFloat('0.' + decimalPart) : 0;
+                    const whole_str = memo.tools.num_to_str(wholePart);
+
+                    if (floatPart < 0.2) {
+                        return `more than ${whole_str}`;
+                    } 
+                    if (floatPart < 0.4) {
+                        return `${whole_str} and a third`;
+                    }
+                    if (floatPart < 0.6) {
+                        return `${whole_str} and a half`;
+                    }
+                    if (floatPart < 0.8) {
+                        return `more than ${whole_str} and a half`;
+                    }
+                    return `almost ${memo.tools.num_to_str(wholePart + 1)}`;
+
                 case "string":
                     return `"${memo.varlist[ast.varname].value}"`;
                 case "char": //FIXME: will this exist?
                     return `'${memo.varlist[ast.varname].value}'`;
                 case "Lambda":
                     return memo.tools.lambda_to_str(memo.varlist[ast.varname].exp);
+                default:
+                    return memo.varlist[ast.varname].value;
             }
         }
         if (ast.exp.value)
@@ -159,6 +168,7 @@ memo.varlist = {};
         else
             return `I will remember ${ast.varname}.`;
     }
+    
     oi.eval_cmd = function(ast) {
         switch(ast.cmd) {
             case "reset":

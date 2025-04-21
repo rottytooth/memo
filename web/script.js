@@ -41,6 +41,12 @@ const addResponse = (text) => {
     newSpan.className = "response";
     text = text.toLowerCase();
     let reply = memo.interpreter.parse(text);
+    
+    if (/\d/.test(reply)) {
+        confused = ["I am feeling confused.","I am unsure.","Something is not right."];
+        reply = confused[Math.floor(Math.random() * confused.length)];
+    }
+
     newSpan.innerText = reply;
     document.getElementById("n-1").appendChild(newSpan);
     updateStateList();

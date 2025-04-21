@@ -2,7 +2,7 @@
 
 Long programs with short memory.
 
-An interpreter that only performs what it can see. Code flows off the screen to oblivion.
+An interpreter that only performs what it can see. Code flows off the screen into oblivion.
 
 ## To Use
 
