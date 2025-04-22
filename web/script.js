@@ -37,6 +37,7 @@ const updateStateList = () => {
 }
 
 const addResponse = (text) => {
+    // FIXME: This seems like it should be part of the interpreter
     let newSpan = document.createElement('span');
     newSpan.className = "response";
     text = text.toLowerCase();

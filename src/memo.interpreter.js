@@ -134,7 +134,7 @@ memo.varlist = {};
                 case "float": //FIXME: will this exist?
                 case "FloatLiteral":
                     const numStr = String(memo.varlist[ast.varname].value);
-                    const wholePart = numStr.split('.')[0];
+                    const wholePart = parseInt(numStr.split('.')[0]);
                     const decimalPart = numStr.split('.')[1];
                     const floatPart = decimalPart ? parseFloat('0.' + decimalPart) : 0;
                     const whole_str = memo.tools.num_to_str(wholePart);
@@ -216,8 +216,16 @@ memo.varlist = {};
             fade_vars();
             if (e.name == "SyntaxError") {
                 return `I didn't understand ${e.found}.`;
+            } else if ("code" in e && e.code == "reserved") {
+                if (!isNaN(parseInt(e.details.name))) {
+                    // FIXME: This should probably just pull the name from the request. But currently this serves as a test that it is actually a bad int
+                    // (it won't work with another reserved word)
+                    return `I remember ${memo.tools.num_to_str(e.details.name)} differently.`
+                }
+                // non-numeric keywords end up here
+                return `I remember that differently.`
             } else {
-                return `I ran into an internal issue: ${e}`;
+                return `I ran into an internal issue: ${e}.`;
             }
         }
 

@@ -1,3 +1,14 @@
+{
+class MemoSyntaxError extends Error {
+  constructor(msg, code, details) { 
+    super(msg);
+    this.code = code;
+    this.details = details;
+  }
+}
+
+}
+
 Command = c:(Print / Let / Reset) ("."?/"!"?) {
 	return c;
 }
@@ -55,8 +66,12 @@ Atom = e:(Expression) _? {
     }
 }
 
-Identifier = IntLiteral {
-	throw new Error("Cannot assign a new value to a reserved name");
+Identifier = v:IntLiteral {
+	throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", {"name": v["value"]});
+}
+/ v:("remember") // add other reserved words here
+{
+  throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", v)
 }
 / v:[a-zA-ZäöüßÄÖÜ_]+ {
 	return {
@@ -224,15 +239,15 @@ TensDigit =
 OnesDigit = 
 	"zero" { return 0; } /
 	"one" { return 1; } /
-    "two" { return 2; } /
-    "three" { return 3; } /
-    "four" { return 4; } /
-    "five" { return 5; } / 
-    "six" { return 6; } /
-    "seven" { return 7; } /
-    "eight" { return 8; } /
-    "nine" { return 9; } /
-    "zero" { return 0; } 
+  "two" { return 2; } /
+  "three" { return 3; } /
+  "four" { return 4; } /
+  "five" { return 5; } / 
+  "six" { return 6; } /
+  "seven" { return 7; } /
+  "eight" { return 8; } /
+  "nine" { return 9; } /
+  "zero" { return 0; } 
 
 TeensDigit = 
     "eleven" { return 11; } /
