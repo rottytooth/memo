@@ -24,7 +24,7 @@ const updateStateList = () => {
     for (const key in memo.varlist) {
         let row = tbody.insertRow();
         let lead = row.insertCell();
-        lead.innerText = "I remember";
+        lead.innerHTML = "&nbsp;I remember";
         lead.className = "varname_store"
         let varname = row.insertCell();
         varname.innerText = key;
