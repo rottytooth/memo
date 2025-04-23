@@ -7,8 +7,8 @@ memo.varlist = {};
     oi.get_dependencies = function(node) {
         if (!node) return [];
 
-        if (node.type === "Variable") {
-            return [node.varname];
+        if (node.type === "VariableName") {
+            return node.name["varname"];
         }
     
         return oi.get_dependencies(node.left).concat(oi.get_dependencies(node.right));
@@ -49,14 +49,16 @@ memo.varlist = {};
 
     oi.eval_exp = function(node) {
         switch(node.type) {
-            case "Addition":
-                return (oi.eval_exp(node.left) + oi.eval_exp(node.right));
-            case "Subtraction":
-                return (oi.eval_exp(node.left) - oi.eval_exp(node.right));
-            case "Multiplication":
-                return (oi.eval_exp(node.left) * oi.eval_exp(node.right));
-            case "Division":
-                return (oi.eval_exp(node.left) / oi.eval_exp(node.right));  
+            case "Additive":
+                if (node.operator == "+")
+                    return (oi.eval_exp(node.left) + oi.eval_exp(node.right));
+                if (node.operator == "-")
+                    return (oi.eval_exp(node.left) - oi.eval_exp(node.right));
+            case "Multiplicative":
+                if (node.operator == "*")
+                    return (oi.eval_exp(node.left) * oi.eval_exp(node.right));
+                if (node.operator == "/")
+                    return (oi.eval_exp(node.left) / oi.eval_exp(node.right));  
             case "IntLiteral":
             case "CharLiteral":
             case "StringLiteral":
@@ -111,10 +113,10 @@ memo.varlist = {};
             return "I can't think of the thing I'm supposed to evaluate.";
         }
 
-        // find circular dependencies
-        if (oi.find_circular_dependencies(ast)) {
-            return `I can't make sense of ${ast.varname}.`;
-        }
+        // // find circular dependencies -- DISABLED
+        // if (oi.find_circular_dependencies(ast)) {
+        //     return `I can't make sense of ${ast.varname}.`;
+        // }
 
         memo.varlist[ast.varname] = 
         {
@@ -158,9 +160,8 @@ memo.varlist = {};
                 case "char": //FIXME: will this exist?
                     return `'${memo.varlist[ast.varname].value}'`;
                 case "Lambda":
-                    return memo.tools.lambda_to_str(memo.varlist[ast.varname].exp);
                 default:
-                    return memo.varlist[ast.varname].value;
+                    return memo.tools.lambda_to_str(memo.varlist[ast.varname].exp);
             }
         }
         if (ast.exp.value)

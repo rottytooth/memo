@@ -12,8 +12,12 @@ module.exports = function(grunt) {
             options: {
               separator: '\n'
             },
-            dist : {
-              src: ['src/memo.js','memo.tools.js','gen/memo.parser.js','src/memo.interpreter.js'],
+            dist1 : {
+              src: ['src/memo.start.pegjs','packages/esonatlangtools/expressions.pegjs','packages/esonatlangtools/literals.pegjs','packages/esonatlangtools/whitespace.pegjs'],
+              dest: 'build/memo.pegjs'
+            },
+            dist2 : {
+              src: ['src/memo.js','memo.tools.js','build/memo.parser.js','src/memo.interpreter.js'],
               dest: 'memo.js'
             },
         },
@@ -22,8 +26,8 @@ module.exports = function(grunt) {
               cmd: 'npx',
               args: [
                 'peggy','-o',
-                'gen/memo.parser.js',
-                'src/memo.pegjs',
+                'build/memo.parser.js',
+                'build/memo.pegjs',
                 '--format','globals',
                 '-e','memo.parser'
               ]
@@ -34,5 +38,5 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-run');
     grunt.loadNpmTasks('grunt-contrib-copy');
-    grunt.registerTask('build', ['run', 'concat', 'copy']);
+    grunt.registerTask('build', ['concat:dist1', 'run', 'concat:dist2', 'copy']);
 };

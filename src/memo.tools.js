@@ -12,6 +12,11 @@ memo.tools.num_to_str = (num) => {
     let numStr = num.toString();
     let groupIndex = 0;
 
+    if (numStr[0] === "-") {
+        word += "negative ";
+        numStr = numStr.slice(1);
+    }
+
     while (numStr.length > 0) {
         let group = parseInt(numStr.slice(-3)) || 0;
         numStr = numStr.slice(0, -3);
@@ -46,22 +51,24 @@ memo.tools.num_to_str = (num) => {
 
 memo.tools.lambda_to_str = (node) => {
     switch(node.type) {
-        case "Addition":
-            return `(${memo.tools.lambda_to_str(node.left)} plus ${memo.tools.lambda_to_str(node.right)})`;
-        case "Subtraction":
-            return `(${memo.tools.lambda_to_str(node.left)} minus ${memo.tools.lambda_to_str(node.right)})`;
-        case "Multiplication":
-            return `(${memo.tools.lambda_to_str(node.left)} times ${memo.tools.lambda_to_str(node.right)})`;
-        case "Division":
-            return `(${memo.tools.lambda_to_str(node.left)} divided by ${memo.tools.lambda_to_str(node.right)})`; 
+        case "Additive":
+            if (node.operator == "+")
+                return `(${memo.tools.lambda_to_str(node.left)} plus ${memo.tools.lambda_to_str(node.right)})`;
+            if (node.operator == "-")
+                return `(${memo.tools.lambda_to_str(node.left)} minus ${memo.tools.lambda_to_str(node.right)})`;
+        case "Multiplicative":
+            if (node.operator == "*")
+                return `(${memo.tools.lambda_to_str(node.left)} times ${memo.tools.lambda_to_str(node.right)})`;
+            if (node.operator == "/")
+                return `(${memo.tools.lambda_to_str(node.left)} divided by ${memo.tools.lambda_to_str(node.right)})`; 
         case "IntLiteral":
             return memo.tools.num_to_str(node.value);
         case "CharLiteral":
             return `'${node.value}'`;
         case "StringLiteral":
             return `"${node.value}'`;
-        case "Variable":
-            return node.varname;
+        case "VariableName":
+            return node.name["varname"];
         default:
             return "";
     }

@@ -1,7 +1,5 @@
 # []memo
 
-Long programs with short memory.
-
 An interpreter that only performs what it can see. Code flows off the screen into oblivion.
 
 ## To Use
@@ -10,6 +8,6 @@ An interpreter that only performs what it can see. Code flows off the screen int
 
 ## Contributors
 
-Uses Peggyjs.
+Uses Peggyjs. Web interface requires [Hack font](https://www.dafont.com/hack.font), not provided.
 
-Don't update `memo.js` or `memo.parser.js` directly. Update in src folder and then build with `grunt build`.
+To contribute changes, don't update `memo.js` or `memo.parser.js` directly. Update in src folder and then build with `grunt build`. 

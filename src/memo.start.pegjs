@@ -1,0 +1,56 @@
+{
+class MemoSyntaxError extends Error {
+  constructor(msg, code, details) { 
+    super(msg);
+    this.code = code;
+    this.details = details;
+  }
+}
+
+}
+
+Command = c:(Print / Let / Reset) ("."?/"!"?) {
+	return c;
+}
+
+Reset = ("R"/"r")"emember" v:Identifier {
+	return {
+    	cmd: "reset",
+        varname: v.varname
+    };
+}
+
+Let = ("R"/"r")"emember" _ v:Identifier _ "as" exp:Expression {
+	return {
+    	cmd: "let",
+        varname: v.varname,
+        exp: exp
+    };
+}
+
+Type = f:(("I"/"i")"nt" ("eger")?/("F"/"f")"loat"/("S"/"s")"tring"/("A"/"a")"rray"/("C"/"c")"har" ("acter")?) {
+	return f.join("").toLowerCase();
+} / $(.*) {
+	return "undetermined"
+}
+
+Print = ("T"/"t")"ell me" (_ "about")? _ exp:Identifier {
+	return {
+    	cmd: "print",
+        exp: exp
+    };
+}
+
+Identifier = v:NumberLiteral {
+	throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", {"name": v["value"]});
+}
+/ v:("remember") // add other reserved words here
+{
+  throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", v)
+}
+/ v:[a-zA-ZäöüßÄÖÜ_]+ {
+	return {
+        type: "Variable",
+        varname: v.join("")
+    };
+}

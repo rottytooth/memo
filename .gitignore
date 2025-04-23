@@ -5,3 +5,7 @@ fonts
 .vscode
 .vscode/*
 node_modules
+build
+build/*
+packages
+packages/*
