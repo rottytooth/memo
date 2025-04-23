@@ -1,7 +1,7 @@
 module.exports = function(grunt) {
 
     grunt.initConfig({
-        copy: {
+        copy: { // this is no longer called
             main: {
               files: [
                 {expand: true, src: ['memo.js'], dest: 'web'},
@@ -38,5 +38,5 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-run');
     grunt.loadNpmTasks('grunt-contrib-copy');
-    grunt.registerTask('build', ['concat:dist1', 'run', 'concat:dist2', 'copy']);
+    grunt.registerTask('build', ['concat:dist1', 'run', 'concat:dist2']);
 };

@@ -44,7 +44,7 @@ Print = ("T"/"t")"ell me" (_ "about")? _ exp:Identifier {
 Identifier = v:NumberLiteral {
 	throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", {"name": v["value"]});
 }
-/ v:("remember") // add other reserved words here
+/ v:("remember"/"million"/"thousand"/"hundred"/"billion") // add other reserved words here
 {
   throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", v)
 }
