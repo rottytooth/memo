@@ -6,8 +6,11 @@ An interpreter that only performs what it can see. Code flows off the screen int
 
 `memo.js` is the (non-minimized) production file.
 
-## Contributors
+## To Contribute
+
+Please don't update `memo.js` or `memo.parser.js` directly. Update in src folder and then build with `grunt build`. 
+
+Requires the <a href="https://github.com/rottytooth/esonatlangtools">esonatlangtools</a> project deployed to the `packages/esonatlangtools` folder.
 
 Uses Peggyjs. Web interface requires [Hack font](https://www.dafont.com/hack.font), not provided.
 
-To contribute changes, don't update `memo.js` or `memo.parser.js` directly. Update in src folder and then build with `grunt build`. 

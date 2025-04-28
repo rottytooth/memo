@@ -58,6 +58,9 @@ a, a:visited {
 #state_table {
     margin: 0;
 }
+#state_table .vrbl {
+    color: #a00;
+}
 td {
     vertical-align: top;
     padding-right: 10px;
@@ -158,7 +161,6 @@ input:focus, textarea:focus{
     border: 0;
     width: 100%;
     height: 100px;
-    text-transform: lowercase;
     resize: none;
     /* background-color: #fff; */
     background-color: rgba(0, 0, 0, 0); border-color: rgba(0, 0, 0, 0)

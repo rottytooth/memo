@@ -128,12 +128,10 @@ memo.varlist = {};
             fade: 1,
         }
 
-        memo.varlist[ast.varname].formatted_value = () => {
+        memo.varlist[ast.varname].formatted_value = (is_html) => {
             switch(memo.varlist[ast.varname].type) {
-                case "int":
                 case "IntLiteral":
                     return memo.tools.num_to_str(memo.varlist[ast.varname].value);
-                case "float": //FIXME: will this exist?
                 case "FloatLiteral":
                     const numStr = String(memo.varlist[ast.varname].value);
                     const wholePart = parseInt(numStr.split('.')[0]);
@@ -154,40 +152,39 @@ memo.varlist = {};
                         return `more than ${whole_str} and a half`;
                     }
                     return `almost ${memo.tools.num_to_str(wholePart + 1)}`;
-
-                case "string":
+                case "StringLiteral":
                     return `"${memo.varlist[ast.varname].value}"`;
-                case "char": //FIXME: will this exist?
+                case "CharLiteral":
                     return `'${memo.varlist[ast.varname].value}'`;
                 case "Lambda":
                 default:
-                    return memo.tools.lambda_to_str(memo.varlist[ast.varname].exp);
+                    return memo.tools.lambda_to_str(memo.varlist[ast.varname].exp, is_html);
             }
         }
         if (ast.exp.value)
-            return `I will remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value()}.`;
+            return `I will remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value(is_html)}.`;
         else
             return `I will remember ${ast.varname}.`;
     }
     
-    oi.eval_cmd = function(ast) {
+    oi.eval_cmd = function(ast, is_html) {
         switch(ast.cmd) {
             case "reset":
-                return `I remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value()}.`;
+                return `I remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value(is_html)}.`;
 
             case "let": 
                 if (!(ast.varname in memo.varlist)) {
                     // varname is not there yet, need to declare and then assign
-                    return oi.eval_and_assign(ast);
+                    return oi.eval_and_assign(ast, is_html);
                 }
-                return oi.eval_and_assign(ast);
+                return oi.eval_and_assign(ast, is_html);
             case "print":
                 // this exp needs to actually be evaluated, currently assumes
                 // the exp is just a variable
                 if (!(ast.exp.varname in memo.varlist)) {
                     return `Hmm I don't remember ${ast.exp.varname}.`;
                 }
-                return capitalize(memo.varlist[ast.exp.varname].formatted_value());
+                return capitalize(memo.varlist[ast.exp.varname].formatted_value(is_html));
         }
     }
     
@@ -206,7 +203,7 @@ memo.varlist = {};
             }
         }
     }
-    oi.parse = function(input) {
+    oi.parse = function(input, is_html = false) {
         let ast;
 
         input = input.trim();
@@ -216,7 +213,11 @@ memo.varlist = {};
         } catch (e) {
             fade_vars();
             if (e.name == "SyntaxError") {
-                return `I didn't understand ${e.found}.`;
+                let wrd = input.slice(e.location.start.column - 1);
+                if (wrd.indexOf(" ")) {
+                    wrd = wrd.slice(0, wrd.indexOf(" "));
+                }
+                return `I didn't understand ${wrd}.`;
             } else if ("code" in e && e.code == "reserved") {
                 if (!isNaN(parseInt(e.details.name))) {
                     // FIXME: This should probably just pull the name from the request. But currently this serves as a test that it is actually a bad int
@@ -230,7 +231,7 @@ memo.varlist = {};
             }
         }
 
-        response = oi.eval_cmd(ast);
+        response = oi.eval_cmd(ast, is_html);
 
         fade_vars(ast);
 
