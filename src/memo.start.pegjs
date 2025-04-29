@@ -71,11 +71,11 @@ Lambda = "lambda" {
     };
 }
 
-If = "if" _ exp:Expression _ "then" _ then:Expression _ (("," _)? "else" _ else:Expression)? {
+If = "if" _ exp:Expression _ "then" _ then:Expression _ (("," _)? "else" _ el:Expression)? {
   return {
-    	cmd: "if",
+    	type: "IfBlock",
         exp: exp,
         then: then,
-        else: else
+        else: el
     };
 }

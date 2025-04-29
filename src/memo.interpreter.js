@@ -63,6 +63,14 @@ memo.varlist = {};
             case "CharLiteral":
             case "StringLiteral":
                 return node.value;
+            case "VariableName":
+                if (node.name in memo.varlist) {
+                    return memo.varlist[node.name].value;
+                } else {
+                    return undefined;
+                }
+            default:
+                throw new MemoSyntaxError("I don't know how to evaluate that.");
         }
     }
 
@@ -99,20 +107,25 @@ memo.varlist = {};
         }
     }
     
-    oi.eval_and_assign = function(ast) {
-        if (!ast.is_lambda && "exp" in ast) {
-            ast.deps = oi.get_dependencies(ast.exp);
-            if (ast.deps.length > 0) {
-                ast.type = "Lambda";
-            } else {
-                ast.exp.value = oi.eval_exp(ast.exp);
-                oi.determine_type(ast.exp);
-            }
-        } else if (ast.is_lambda) {
-            return "IN LAMBDA";
+    oi.eval_and_assign = function(ast, varname) {
+        ast.varname = varname;
+        if ("exp" in ast) {
+            ast.deps = oi.get_dependencies(ast);
+        }
+        if (ast.deps && ast.deps.length > 0) {
+            ast.is_lambda = true;
+            // } else {
+            //     ast.exp.value = oi.eval_exp(ast.exp);
+            //     oi.determine_type(ast.exp);
+            // }
+            // return;
+        } 
+        if (ast.type == "IfBlock") {
+        } else if (ast.type == "Lambda") {
+        } else if (ast.type == "List") {
         } else {
             // there is no expression or we are not in the right node
-            return "I can't think of the thing I'm supposed to evaluate.";
+            oi.eval_exp(ast);
         }
 
         // // find circular dependencies -- DISABLED
@@ -122,9 +135,9 @@ memo.varlist = {};
 
         memo.varlist[ast.varname] = 
         {
-            type: ast.type ?? ast.exp.type,
-            value: ast.exp.value || undefined,
-            has_value: !!ast.exp.value,
+            type: ast.type,
+            value: ast.value || undefined,
+            has_value: !!ast.value,
             exp: ast.exp,
             depends_on: ast.deps,
             fade: 1,
@@ -158,28 +171,30 @@ memo.varlist = {};
                     return `"${memo.varlist[ast.varname].value}"`;
                 case "CharLiteral":
                     return `'${memo.varlist[ast.varname].value}'`;
+                case "List":
+                    return `({${memo.varlist[ast.varname].items.join(", ")}})`;
                 case "Lambda":
                 default:
-                    return memo.tools.lambda_to_str(memo.varlist[ast.varname].exp, is_html);
+                    return memo.tools.lambda_to_str(memo.varlist[ast.varname], is_html);
             }
         }
-        if (ast.exp.value)
-            return `I will remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value(is_html)}.`;
+        if (ast.value)
+            return `I will remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value(false)}.`;
         else
             return `I will remember ${ast.varname}.`;
     }
     
-    oi.eval_cmd = function(ast, is_html) {
+    oi.eval_cmd = function(ast) {
         switch(ast.cmd) {
             case "reset":
                 return `I remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value(is_html)}.`;
 
             case "let": 
-                if (!(ast.varname in memo.varlist)) {
-                    // varname is not there yet, need to declare and then assign
-                    return oi.eval_and_assign(ast, is_html);
-                }
-                return oi.eval_and_assign(ast, is_html);
+                // if (!(ast.varname in memo.varlist)) {
+                //     // varname is not there yet, need to declare and then assign
+                //     return oi.eval_and_assign(ast.exp);
+                // }
+                return oi.eval_and_assign(ast.exp, ast.varname);
             case "print":
                 // this exp needs to actually be evaluated, currently assumes
                 // the exp is just a variable
@@ -233,7 +248,7 @@ memo.varlist = {};
             }
         }
 
-        response = oi.eval_cmd(ast, is_html);
+        response = oi.eval_cmd(ast);
 
         fade_vars(ast);
 
