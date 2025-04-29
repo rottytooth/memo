@@ -11,14 +11,7 @@ const fadeOut = (text) => {
     }, 300);
 };
 
-const buildTree = () => {
-    for (const key in memo.varlist) {
-        console.log(key);
-    }
-}
-
 const updateStateList = () => {
-    buildTree();
     let state_list_tbody = document.getElementById("state_table").getElementsByTagName('tbody')[0];
     let tbody = document.createElement('tbody');
     for (const key in memo.varlist) {

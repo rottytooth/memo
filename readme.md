@@ -12,5 +12,7 @@ Please don't update `memo.js` or `memo.parser.js` directly. Update in src folder
 
 Requires the <a href="https://github.com/rottytooth/esonatlangtools">esonatlangtools</a> project deployed to the `packages/esonatlangtools` folder.
 
-Uses Peggyjs. Web interface requires [Hack font](https://www.dafont.com/hack.font), not provided.
+Requires the module <a href="https://github.com/rottytooth/esoconlangtools">esoconlangtools</a>, which should be copied to `packages/esoconlangtools`.
+
+Also uses Peggyjs. Web interface requires [Hack font](https://www.dafont.com/hack.font).
 

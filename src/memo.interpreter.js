@@ -100,7 +100,7 @@ memo.varlist = {};
     }
     
     oi.eval_and_assign = function(ast) {
-        if ("exp" in ast) {
+        if (!ast.is_lambda && "exp" in ast) {
             ast.deps = oi.get_dependencies(ast.exp);
             if (ast.deps.length > 0) {
                 ast.type = "Lambda";
@@ -108,6 +108,8 @@ memo.varlist = {};
                 ast.exp.value = oi.eval_exp(ast.exp);
                 oi.determine_type(ast.exp);
             }
+        } else if (ast.is_lambda) {
+            return "IN LAMBDA";
         } else {
             // there is no expression or we are not in the right node
             return "I can't think of the thing I'm supposed to evaluate.";
