@@ -49,20 +49,21 @@ memo.tools.num_to_str = (num) => {
     return word.trim();
 }
 
-memo.tools.lambda_to_str = (node, is_html) => {
+memo.tools.exp_to_str = (node, is_html) => {
     switch(node.type) {
         case "Additive":
             if (node.operator == "+")
-                return `(${memo.tools.lambda_to_str(node.left, is_html)} plus ${memo.tools.lambda_to_str(node.right, is_html)})`;
+                return `(${memo.tools.exp_to_str(node.left, is_html)} plus ${memo.tools.exp_to_str(node.right, is_html)})`;
             if (node.operator == "-")
-                return `(${memo.tools.lambda_to_str(node.left, is_html)} minus ${memo.tools.lambda_to_str(node.right, is_html)})`;
+                return `(${memo.tools.exp_to_str(node.left, is_html)} minus ${memo.tools.exp_to_str(node.right, is_html)})`;
         case "Multiplicative":
             if (node.operator == "*")
-                return `(${memo.tools.lambda_to_str(node.left, is_html)} times ${memo.tools.lambda_to_str(node.right, is_html)})`;
+                return `(${memo.tools.exp_to_str(node.left, is_html)} times ${memo.tools.exp_to_str(node.right, is_html)})`;
             if (node.operator == "/")
-                return `(${memo.tools.lambda_to_str(node.left, is_html)} divided by ${memo.tools.lambda_to_str(node.right, is_html)})`; 
+                return `(${memo.tools.exp_to_str(node.left, is_html)} divided by ${memo.tools.exp_to_str(node.right, is_html)})`; 
         case "IntLiteral":
-            return memo.tools.num_to_str(node.value);
+        case "FloatLiteral":
+                return memo.tools.num_to_str(node.value);
         case "CharLiteral":
             return `'${node.value}'`;
         case "StringLiteral":
