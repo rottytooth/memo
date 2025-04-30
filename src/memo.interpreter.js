@@ -94,45 +94,8 @@ memo.RuntimeError = class extends Error {
         ast.fade = 1;
         memo.varlist[ast.varname] = ast;
 
-        // FIXME: this does not need to be assigned to the var
-        memo.varlist[ast.varname].formatted_value = (is_html) => {
-            switch(memo.varlist[ast.varname].type) {
-                case "IntLiteral":
-                    return memo.tools.num_to_str(memo.varlist[ast.varname].value);
-                case "FloatLiteral":
-                    const numStr = String(memo.varlist[ast.varname].value);
-                    const wholePart = parseInt(numStr.split('.')[0]);
-                    const decimalPart = numStr.split('.')[1];
-                    const floatPart = decimalPart ? parseFloat('0.' + decimalPart) : 0;
-                    const whole_str = memo.tools.num_to_str(wholePart);
-
-                    if (floatPart < 0.2) {
-                        return `more than ${whole_str}`;
-                    } 
-                    if (floatPart < 0.4) {
-                        return `${whole_str} and a third`;
-                    }
-                    if (floatPart < 0.6) {
-                        return `${whole_str} and a half`;
-                    }
-                    if (floatPart < 0.8) {
-                        return `more than ${whole_str} and a half`;
-                    }
-                    return `almost ${memo.tools.num_to_str(wholePart + 1)}`;
-                case "StringLiteral":
-                    return `"${memo.varlist[ast.varname].value}"`;
-                case "CharLiteral":
-                    return `'${memo.varlist[ast.varname].value}'`;
-                case "List":
-                    return `({${memo.varlist[ast.varname].items.join(", ")}})`;
-                case "Lambda":
-                default:
-                    return memo.tools.exp_to_str(memo.varlist[ast.varname], is_html);
-            }
-        }
-
         if (ast.has_value)
-            return `I will remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value(false)}.`;
+            return `I will remember ${ast.varname} as ${memo.tools.format_var_str(ast.varname, false)}.`;
         else
             return `I will remember ${ast.varname}.`;
     }
@@ -149,7 +112,7 @@ memo.RuntimeError = class extends Error {
                 if (!(ast.exp.varname in memo.varlist)) {
                     return `Hmm I don't remember ${ast.exp.varname}.`;
                 }
-                return capitalize(memo.varlist[ast.exp.varname].formatted_value(false));
+                return capitalize(memo.tools.format_var_str(ast.exp.varname, false));
         }
     }
     
