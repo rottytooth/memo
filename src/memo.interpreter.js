@@ -53,6 +53,7 @@ memo.RuntimeError = class extends Error {
             case "IntLiteral":
             case "CharLiteral":
             case "StringLiteral":
+            case "List":
                 return node;
             case "VariableName":
                 if (node.name.varname in memo.varlist) {
@@ -95,7 +96,7 @@ memo.RuntimeError = class extends Error {
         memo.varlist[ast.varname] = ast;
 
         if (ast.has_value)
-            return `I will remember ${ast.varname} as ${memo.tools.format_var_str(ast.varname, false)}.`;
+            return `I will remember ${ast.varname} as ${memo.tools.exp_to_str(memo.varlist[ast.varname], false)}.`;
         else
             return `I will remember ${ast.varname}.`;
     }
@@ -112,7 +113,7 @@ memo.RuntimeError = class extends Error {
                 if (!(ast.exp.varname in memo.varlist)) {
                     return `Hmm I don't remember ${ast.exp.varname}.`;
                 }
-                return capitalize(memo.tools.format_var_str(ast.exp.varname, false));
+                return capitalize(memo.tools.exp_to_str(memo.varlist[ast.exp.varname], false));
         }
     }
     

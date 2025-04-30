@@ -89,31 +89,16 @@ memo.tools.exp_to_str = (node, is_html) => {
         case "CharLiteral":
             return `'${node.value}'`;
         case "StringLiteral":
-            return `"${node.value}'`;
+            return `"${node.value}"`;
         case "VariableName":
             if (is_html) {
                 return `<span class="vrbl">${node.name["varname"]}</span>`
             }
             return node.name["varname"];
-        default:
-            return "";
-    }
-}
-
-memo.tools.format_var_str = (varname, is_html) => {
-    switch(memo.varlist[varname].type) {
-        case "IntLiteral":
-            return memo.tools.int_to_str(memo.varlist[varname].value);
-        case "FloatLiteral":
-            return memo.tools.float_to_str(memo.varlist[varname].value);
-        case "StringLiteral":
-            return `"${memo.varlist[varname].value}"`;
-        case "CharLiteral":
-            return `'${memo.varlist[varname].value}'`;
         case "List":
-            return `({${memo.varlist[varname].items.join(", ")}})`;
+            return `[${node.items.map((elem) => memo.tools.exp_to_str(elem)).join(", ")}]`;
         case "Lambda":
         default:
-            return memo.tools.exp_to_str(memo.varlist[varname], is_html);
+            return "";
     }
 }

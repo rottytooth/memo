@@ -24,7 +24,7 @@ const updateStateList = () => {
         varname.classList.add("right_td"); 
         varname.classList.add("vrbl");
         let varvalue = row.insertCell();
-        varvalue.innerHTML = `as ${memo.tools.format_var_str(key, true)}.`;
+        varvalue.innerHTML = `as ${memo.tools.exp_to_str(memo.varlist[key], true)}.`;
         row.style.opacity = `var(--n${memo.varlist[key].fade})`;
     }
     state_list_tbody.parentNode.replaceChild(tbody, state_list_tbody);
