@@ -2,6 +2,14 @@ memo.interpreter = {};
 
 memo.varlist = {};
 
+memo.RuntimeError = class extends Error {
+    constructor(message, term = null) {
+        super(message);
+        this.name = "RuntimeError";
+        this.term = term; // the unknown term (may be null)
+    }
+};
+
 (function(oi) {
 
     oi.get_dependencies = function(node) {
@@ -10,191 +18,110 @@ memo.varlist = {};
         if (node.type === "VariableName") {
             return node.name["varname"];
         }
-    
-        return oi.get_dependencies(node.left).concat(oi.get_dependencies(node.right));
+        if (node.left && node.right) {
+            return oi.get_dependencies(node.left).concat(oi.get_dependencies(node.right));
+        }
+        return [];
     }
 
-    oi.find_circular_dependencies = function(ast, visited = new Set(), stack = new Set()) {
-        if (!ast || !ast.varname) return false;
+    oi.eval_exp = function(node, curr_state = false) {
+        // curr_state means resolves all variables
+        if (node.left) 
+            node.left = oi.eval_exp(node.left);
+        if (node.right)
+            node.right = oi.eval_exp(node.right);
+        if (node.exp)
+            node.exp = oi.eval_exp(node.exp);
 
-        if (stack.has(ast.varname)) {
-            // Circular dependency detected
-            return true;
-        }
-
-        if (visited.has(ast.varname)) {
-            // Already checked this variable, no circular dependency
-            return false;
-        }
-
-        // Mark the current variable as visited and add it to the stack
-        visited.add(ast.varname);
-        stack.add(ast.varname);
-
-        let dependencies = memo.varlist[ast.varname]?.depends_on
-        if (!Array.isArray(dependencies) || dependencies.length === 0) {
-            dependencies = ast.deps || [];
-        }
-        for (const dep of dependencies) {
-            if (oi.find_circular_dependencies({ varname: dep }, visited, stack)) {
-                return true;
-            }
-        }
-
-        // Remove the current variable from the stack
-        stack.delete(ast.varname);
-
-        return false;
-    };
-
-    oi.eval_exp = function(node) {
         switch(node.type) {
             case "Additive":
-                if (node.operator == "+")
-                    return (oi.eval_exp(node.left) + oi.eval_exp(node.right));
-                if (node.operator == "-")
-                    return (oi.eval_exp(node.left) - oi.eval_exp(node.right));
             case "Multiplicative":
-                if (node.operator == "*")
-                    return (oi.eval_exp(node.left) * oi.eval_exp(node.right));
-                if (node.operator == "/")
-                    return (oi.eval_exp(node.left) / oi.eval_exp(node.right));  
+                if (curr_state || 
+                    (oi.get_dependencies(node.left).length == 0 && 
+                    oi.get_dependencies(node.right).length == 0)) {
+
+                    if (node.operator == "+")
+                        return oi.determine_type(node.left.value + node.right.value);
+                    if (node.operator == "-")
+                        return oi.determine_type(node.left.value - node.right.value);
+                    if (node.operator == "*")
+                        return oi.determine_type(node.left.value * node.right.value);
+                    if (node.operator == "/")
+                        return oi.determine_type(oi.eval_exp(node.left).value / oi.eval_exp(node.right).value);
+                }
+                return node;
             case "IntLiteral":
             case "CharLiteral":
             case "StringLiteral":
-                return node.value;
+            case "List":
+                return node;
+            case "VariableName":
+                if (node.name.varname in memo.varlist) {
+                    if (curr_state) {
+                        return memo.varlist[node.name].value;
+                    }
+                    return node;
+                }
+                throw new memo.RuntimeError(`I don't remember ${node.name.varname}.`, node.name.varname);
+            default:
+                throw new memo.RuntimeError("I don't know how to evaluate that.", node.type);
         }
     }
 
-    oi.determine_type = function(ast) {
-        const attempt_int = parseInt(ast.value);
-        const attempt_float = parseFloat(ast.value);
+    oi.determine_type = function(val) {
+        const attempt_int = parseInt(val);
+        const attempt_float = parseFloat(val);
         
         if (!isNaN(attempt_int) && attempt_int == attempt_float) {
-            ast.value = attempt_int;
-            ast.type = "IntLiteral";
-            return;
+            return {type: "IntLiteral", value: attempt_int};
         }
-        // if (typeof(ast.value) == "int") {
-        //     ast.type = "IntLiteral";
-        //     return;
-        // }
         if (!isNaN(attempt_float)) {
-            ast.value = attempt_float;
-            ast.type = "FloatLiteral";
-            return;
+            return {type: "FloatLiteral", value: attempt_float};
         }
-        // if (typeof(ast.value) == "float") {
-        //     ast.type = "FloatLiteral";
-        //     return;
-        // }
-        if (typeof(ast.value) == "string") {
-            if (ast.value.length == 1) {
-                ast.type = "CharLiteral";
-                return;
-            }
-            
-            ast.type = "StringLiteral";
-            return;
+        if (typeof(val) == "string" && val.length == 1) {
+            return {type: "CharLiteral", value: ast.value};
         }
+        return {type: "StringLiteral", value: ast.value};
     }
     
-    oi.eval_and_assign = function(ast) {
+    oi.eval_and_assign = function(ast, varname) {
+        ast = oi.eval_exp(ast, false);
+        ast.varname = varname;
         if ("exp" in ast) {
             ast.deps = oi.get_dependencies(ast.exp);
-            if (ast.deps.length > 0) {
-                ast.type = "Lambda";
-            } else {
-                ast.exp.value = oi.eval_exp(ast.exp);
-                oi.determine_type(ast.exp);
-            }
-        } else {
-            // there is no expression or we are not in the right node
-            return "I can't think of the thing I'm supposed to evaluate.";
         }
 
-        // // find circular dependencies -- DISABLED
-        // if (oi.find_circular_dependencies(ast)) {
-        //     return `I can't make sense of ${ast.varname}.`;
-        // }
+        ast.has_value = !!ast.value;
+        ast.fade = 1;
+        memo.varlist[ast.varname] = ast;
 
-        memo.varlist[ast.varname] = 
-        {
-            type: ast.type ?? ast.exp.type,
-            value: ast.exp.value || undefined,
-            has_value: !!ast.exp.value,
-            exp: ast.exp,
-            depends_on: ast.deps,
-            fade: 1,
-        }
-
-        memo.varlist[ast.varname].formatted_value = () => {
-            switch(memo.varlist[ast.varname].type) {
-                case "int":
-                case "IntLiteral":
-                    return memo.tools.num_to_str(memo.varlist[ast.varname].value);
-                case "float": //FIXME: will this exist?
-                case "FloatLiteral":
-                    const numStr = String(memo.varlist[ast.varname].value);
-                    const wholePart = parseInt(numStr.split('.')[0]);
-                    const decimalPart = numStr.split('.')[1];
-                    const floatPart = decimalPart ? parseFloat('0.' + decimalPart) : 0;
-                    const whole_str = memo.tools.num_to_str(wholePart);
-
-                    if (floatPart < 0.2) {
-                        return `more than ${whole_str}`;
-                    } 
-                    if (floatPart < 0.4) {
-                        return `${whole_str} and a third`;
-                    }
-                    if (floatPart < 0.6) {
-                        return `${whole_str} and a half`;
-                    }
-                    if (floatPart < 0.8) {
-                        return `more than ${whole_str} and a half`;
-                    }
-                    return `almost ${memo.tools.num_to_str(wholePart + 1)}`;
-
-                case "string":
-                    return `"${memo.varlist[ast.varname].value}"`;
-                case "char": //FIXME: will this exist?
-                    return `'${memo.varlist[ast.varname].value}'`;
-                case "Lambda":
-                default:
-                    return memo.tools.lambda_to_str(memo.varlist[ast.varname].exp);
-            }
-        }
-        if (ast.exp.value)
-            return `I will remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value()}.`;
+        if (ast.has_value)
+            return `I will remember ${ast.varname} as ${memo.tools.exp_to_str(memo.varlist[ast.varname], false)}.`;
         else
             return `I will remember ${ast.varname}.`;
     }
     
     oi.eval_cmd = function(ast) {
         switch(ast.cmd) {
-            case "reset":
-                return `I remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value()}.`;
-
+            // case "reset":
+            //     return `I remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value(false)}.`;
             case "let": 
-                if (!(ast.varname in memo.varlist)) {
-                    // varname is not there yet, need to declare and then assign
-                    return oi.eval_and_assign(ast);
-                }
-                return oi.eval_and_assign(ast);
+                return oi.eval_and_assign(ast.exp, ast.varname);
             case "print":
                 // this exp needs to actually be evaluated, currently assumes
                 // the exp is just a variable
                 if (!(ast.exp.varname in memo.varlist)) {
                     return `Hmm I don't remember ${ast.exp.varname}.`;
                 }
-                return capitalize(memo.varlist[ast.exp.varname].formatted_value());
+                return capitalize(memo.tools.exp_to_str(memo.varlist[ast.exp.varname], false));
         }
     }
     
     const capitalize = (str) => {
+        // FIXME: this should not lowercase content in strings
         if (!str || typeof str !== "string") return "";
 
-        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() + ".";
+        return str.charAt(0).toUpperCase() + str.slice(1) /*.toLowerCase()*/ + ".";
     };
     const fade_vars = (ast) => {
         for (const key in memo.varlist) {
@@ -206,7 +133,7 @@ memo.varlist = {};
             }
         }
     }
-    oi.parse = function(input) {
+    oi.parse = function(input, is_html = false) {
         let ast;
 
         input = input.trim();
@@ -216,7 +143,11 @@ memo.varlist = {};
         } catch (e) {
             fade_vars();
             if (e.name == "SyntaxError") {
-                return `I didn't understand ${e.found}.`;
+                let wrd = input.slice(e.location.start.column - 1);
+                if (wrd.indexOf(" ")) {
+                    wrd = wrd.slice(0, wrd.indexOf(" "));
+                }
+                return `I didn't understand ${wrd}.`;
             } else if ("code" in e && e.code == "reserved") {
                 if (!isNaN(parseInt(e.details.name))) {
                     // FIXME: This should probably just pull the name from the request. But currently this serves as a test that it is actually a bad int
@@ -230,7 +161,16 @@ memo.varlist = {};
             }
         }
 
-        response = oi.eval_cmd(ast);
+        try {
+            response = oi.eval_cmd(ast);
+        }
+        catch (e) {
+            if (e.name == "RuntimeError" || e.name == "SyntaxError") {
+                return e.message;
+            } else {
+                return `I ran into an internal issue: ${e}.`;
+            }
+        }
 
         fade_vars(ast);
 

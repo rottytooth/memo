@@ -20,11 +20,19 @@ Reset = ("R"/"r")"emember" v:Identifier {
     };
 }
 
-Let = ("R"/"r")"emember" _ v:Identifier _ "as" exp:Expression {
+Let = ("R"/"r")"emember" _ v:Identifier _ "as" _ lbd:Lambda {
 	return {
     	cmd: "let",
         varname: v.varname,
-        exp: exp
+        lambda: lbd,
+        is_lambda: true
+    };
+} / ("R"/"r")"emember" _ v:Identifier _ "as" exp:Expression {
+	return {
+    	cmd: "let",
+        varname: v.varname,
+        exp: exp,
+        is_lambda: false
     };
 }
 
@@ -52,5 +60,22 @@ Identifier = v:NumberLiteral {
 	return {
         type: "Variable",
         varname: v.join("")
+    };
+}
+
+Lambda = "lambda" {
+  return {
+    	type: "Lambda",
+
+      // exp: exp
+    };
+}
+
+If = "if" _ exp:Expression _ "then" _ then:Expression _ (("," _)? "else" _ el:Expression)? {
+  return {
+    	type: "IfBlock",
+        exp: exp,
+        then: then,
+        else: el
     };
 }
