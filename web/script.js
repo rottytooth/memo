@@ -1,10 +1,12 @@
+var currHistoryLoc = 0;
+
 const fadeOut = (text) => {
     for (var i = 12; i > 0; i--) {
         if (i > 1) {
             document.getElementById("n-" + i).innerHTML = document.getElementById("n-" + (i - 1)).innerHTML;
         }
     }
-    document.getElementById("n-1").innerHTML = capitalizeFirstLetter(text);
+    document.getElementById("n-1").innerHTML = `<span class="query">${capitalizeFirstLetter(text)}</span>`;
 
     setTimeout(() => {
         addResponse(text);
@@ -24,7 +26,7 @@ const updateStateList = () => {
         varname.classList.add("right_td"); 
         varname.classList.add("vrbl");
         let varvalue = row.insertCell();
-        varvalue.innerHTML = `as ${memo.tools.exp_to_str(memo.varlist[key], true)}.`;
+        varvalue.innerHTML = `as ${memo.tools.expToStr(memo.varlist[key], true)}.`;
         row.style.opacity = `var(--n${memo.varlist[key].fade})`;
     }
     state_list_tbody.parentNode.replaceChild(tbody, state_list_tbody);
@@ -61,6 +63,33 @@ document.addEventListener("DOMContentLoaded", () => {
     let cursorField = document.getElementById("n"); 
 
     cursorField.addEventListener("keydown", function(event) {
+        if (event.key === "ArrowUp" && currHistoryLoc < 12) {
+            const queryElement = document.querySelector(`#n-${currHistoryLoc+1} .query`);
+            if (queryElement) {
+                currHistoryLoc++;
+                cursorField.value = queryElement.innerText;
+            }
+
+            event.preventDefault();
+            return false;
+        }
+    
+        if (event.key === "ArrowDown") {
+            if (currHistoryLoc <= 1) {
+                cursorField.value = "";
+                currHistoryLoc = 0;
+            } else {
+                const queryElement = document.querySelector(`#n-${currHistoryLoc-1} .query`);
+                if (queryElement) {
+                    currHistoryLoc--;
+                    cursorField.value = queryElement.innerText;
+                }
+
+                event.preventDefault();
+                return false;
+            }
+        }
+
         if (cursorField.value.length == 0) {
             if (event.altKey || event.ctrlKey || event.metaKey) {
                 return true;
@@ -86,7 +115,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     cursorField.addEventListener("keyup", function(event) {
-        if (event.keyCode === 13) {
+        if (event.key === "Enter") {
+            currHistoryLoc = 0;
             cursorField.value = cursorField.value.trim();
             if (!!cursorField.value.match(/[,:!?]$/)) {
                 // cut off last char if non-period punctuation

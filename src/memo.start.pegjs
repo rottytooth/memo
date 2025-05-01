@@ -9,25 +9,25 @@ class MemoSyntaxError extends Error {
 
 }
 
-Command = c:(Print / Let / Reset) ("."?/"!"?) {
+Command = c:(Print / Let) ("."?/"!"?) {
 	return c;
 }
 
-Reset = ("R"/"r")"emember" v:Identifier {
-	return {
-    	cmd: "reset",
-        varname: v.varname
-    };
-}
+// Reset = (("R"/"r")"emember" / ("U"/"u")"nderstand" ) v:Identifier {
+// 	return {
+//     	cmd: "reset",
+//         varname: v.varname
+//     };
+// }
 
-Let = ("R"/"r")"emember" _ v:Identifier _ "as" _ lbd:Lambda {
+Let = (("R"/"r")"emember" / ("U"/"u")"nderstand"  / ("R"/"r")"ecognize" ) _ v:Identifier _ "as" _ lbd:Lambda {
 	return {
     	cmd: "let",
         varname: v.varname,
         lambda: lbd,
         is_lambda: true
     };
-} / ("R"/"r")"emember" _ v:Identifier _ "as" exp:Expression {
+} / (("R"/"r")"emember" / ("U"/"u")"nderstand"  / ("R"/"r")"ecognize" ) _ v:Identifier _ "as" exp:Expression {
 	return {
     	cmd: "let",
         varname: v.varname,

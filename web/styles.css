@@ -158,6 +158,9 @@ input {
 input:focus, textarea:focus{
     outline: none;
 }
+#fadeout .query {
+    display: inline;
+}
 #n {
     font-family: hack;
     font-size: 1em;
