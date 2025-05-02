@@ -181,7 +181,7 @@ memo.RuntimeError = class extends Error {
                 if (!isNaN(parseInt(e.details.name))) {
                     // FIXME: This should probably just pull the name from the request. But currently this serves as a test that it is actually a bad int
                     // (it won't work with another reserved word)
-                    return `I remember ${memo.tools.intrToStr(e.details.name)} differently.`
+                    return `I remember ${memo.tools.intToStr(e.details.name)} differently.`
                 }
                 // non-numeric keywords end up here
                 return `I remember that differently.`
