@@ -58,6 +58,9 @@ memo.RuntimeError = class extends Error {
             case "IntLiteral":
             case "CharLiteral":
             case "StringLiteral":
+            case "Comparison":
+            case "Conditional":
+            case "Range":
             case "List":
                 return node;
             case "VariableName":

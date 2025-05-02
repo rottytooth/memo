@@ -99,6 +99,32 @@ memo.tools.expToStr = (node, isHtml) => {
                 return `<span class="vrbl">${node.name["varname"]}</span>`
             }
             return node.name["varname"];
+        case "Range":
+            return `from ${memo.tools.expToStr(node.start, isHtml)} to ${memo.tools.expToStr(node.end, isHtml)}`;
+        case "Comparison":
+            if (node.operator == "==")
+                return `(${memo.tools.expToStr(node.left, isHtml)} equals ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "!=")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is not equal to ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == ">")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is greater than ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == ">=")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is greater than or equal to ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "<")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is less than ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "<=")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is less than or equal to ${memo.tools.expToStr(node.right, isHtml)})`;
+        case "Conditional":
+            let toret = `if ${memo.tools.expToStr(node.comp, isHtml)} then ${memo.tools.expToStr(node.exp, isHtml)}`;
+            if (node.else_cond) {
+                node.else_cond.forEach((cond) => {
+                    toret += ` else if ${memo.tools.expToStr(cond.comp, isHtml)} then ${memo.tools.expToStr(cond.exp, isHtml)}`;
+                });
+            }
+            if (node.f_else) {
+                toret += ` else ${memo.tools.expToStr(node.f_else, isHtml)}`;
+            }
+            return toret;
         case "List":
             let gt = ">";
             let lt = "<";
@@ -106,18 +132,10 @@ memo.tools.expToStr = (node, isHtml) => {
                 gt = "&gt;";
                 lt = "&lt;";
             }
-            let retval = `${lt}${node.exp.map((elem) => memo.tools.expToStr(elem, isHtmlr)).join(", ")}${gt}`;
+            let retval = `${lt}${node.exp.map((elem) => memo.tools.expToStr(elem, isHtml)).join(", ")}${gt}`;
             return retval;
         case "Lambda":
         default:
             return "";
     }
 }
-
-// memo.tools.htmlEncode = (str) => {
-//     return str.replace(/&/g, "&amp;")
-//               .replace(/</g, "&lt;")
-//               .replace(/>/g, "&gt;")
-//               .replace(/"/g, "&quot;")
-//               .replace(/'/g, "&#039;");
-// }
