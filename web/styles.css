@@ -49,14 +49,15 @@ a:hover {
     margin-right: 10px;
     z-index: 100;
 
-    /* border-width: 3px;
+    border-width: 3px;
+    background-color: #fff;
     border-style: solid;
     border-image: 
       linear-gradient(
         to bottom, 
         white,
         #900
-      ); */
+      );
 }
 #state_table {
     margin: 0;
@@ -157,6 +158,9 @@ input {
 }
 input:focus, textarea:focus{
     outline: none;
+}
+#fadeout .query {
+    display: inline;
 }
 #n {
     font-family: hack;
