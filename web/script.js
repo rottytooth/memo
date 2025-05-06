@@ -134,7 +134,29 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-document.addEventListener("click", () => {
+document.addEventListener("load", () => {
     var input = document.getElementById('n');
     input.focus();
+});
+document.addEventListener("keypress", (event) => {
+    var input = document.getElementById('n');
+    input.focus();
+    if (event.target.id !== 'n') {
+        const clonedEvent = new KeyboardEvent(event.type, {
+            key: event.key,
+            code: event.code,
+            location: event.location,
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+            altKey: event.altKey,
+            metaKey: event.metaKey,
+            repeat: event.repeat,
+            isComposing: event.isComposing,
+            bubbles: event.bubbles,
+            cancelable: event.cancelable,
+            composed: event.composed
+        });
+        // event.target.id = 'n';
+        input.dispatchEvent(clonedEvent);
+    }
 });

@@ -13,7 +13,7 @@ Command = c:(Print / Let / Reset) ("."?/"!"?) _* {
 	return c;
 }
 
-Reset = (("R"/"r")"emember" / ("U"/"u")"nderstand" ) v:Identifier {
+Reset = (("R"/"r")"emember" / ("U"/"u")"nderstand" ) _ v:Identifier {  
 	return {
     	cmd: "reset",
         varname: v.varname

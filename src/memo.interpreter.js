@@ -113,8 +113,11 @@ memo.RuntimeError = class extends Error {
     
     oi.evalCmd = function(ast) {
         switch(ast.cmd) {
-            // case "reset":
-            //     return `I remember ${ast.varname} as ${memo.varlist[ast.varname].formatted_value(false)}.`;
+            case "reset":
+                if (memo.varlist[ast.varname]) {
+                    return `I remember ${ast.varname} as ${memo.tools.expToStr(memo.varlist[ast.varname])}.`;
+                }
+                return `I don't remember ${ast.varname}.`;
             case "let": 
                 return oi.evalAndAssign(ast.exp, ast.varname);
             case "print":
