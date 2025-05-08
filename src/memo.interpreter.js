@@ -24,19 +24,20 @@ memo.RuntimeError = class extends Error {
         return [];
     }
 
-    oi.evalExp = function(node, currState = false) {
+    oi.evalExp = function(node, params, currState = false) {
         // currState means resolves all variables
+        // when false, it is quoted
         if (node.left) 
-            node.left = oi.evalExp(node.left);
+            node.left = oi.evalExp(node.left, params, currState);
         if (node.right)
-            node.right = oi.evalExp(node.right);
+            node.right = oi.evalExp(node.right, params, currState);
         if (node.exp) {
             if (Array.isArray(node.exp)) {
                 for (let i = 0; i < node.exp.length; i++) {
-                    node.exp[i] = oi.evalExp(node.exp[i]);
+                    node.exp[i] = oi.evalExp(node.exp[i], params, currState);
                 }
             } else
-                node.exp = oi.evalExp(node.exp);
+                node.exp = oi.evalExp(node.exp, params, currState);
         }
         switch(node.type) {
             case "Additive":
@@ -70,6 +71,13 @@ memo.RuntimeError = class extends Error {
                     }
                     return node;
                 }
+                const matchingParam = params.find(param => param.varname === node.name.varname);
+                if (matchingParam) {
+                    if (currState) {
+                        return matchingParam.value;
+                    }
+                    return node;
+                }
                 throw new memo.RuntimeError(`I don't remember ${node.name.varname}.`, node.name.varname);
             case "List":
                 return node.exp.length;
@@ -94,8 +102,9 @@ memo.RuntimeError = class extends Error {
         return {type: "StringLiteral", value: val};
     }
     
-    oi.evalAndAssign = function(ast, varname) {
-        ast = oi.evalExp(ast, false);
+    oi.evalAndAssign = function(ast, varname, params) {
+        ast = oi.evalExp(ast, params, false);
+        ast.params = params;
         ast.varname = varname;
         if ("exp" in ast) {
             ast.deps = oi.getDependencies(ast.exp);
@@ -119,7 +128,7 @@ memo.RuntimeError = class extends Error {
                 }
                 return `I don't remember ${ast.varname}.`;
             case "let": 
-                return oi.evalAndAssign(ast.exp, ast.varname);
+                return oi.evalAndAssign(ast.exp, ast.varname, ast.params);
             case "print":
                 // this exp needs to actually be evaluated, currently assumes
                 // the exp is just a variable

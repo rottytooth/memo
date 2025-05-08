@@ -13,26 +13,33 @@ Command = c:(Print / Let / Reset) ("."?/"!"?) _* {
 	return c;
 }
 
-Reset = (("R"/"r")"emember" / ("U"/"u")"nderstand" ) _ v:Identifier {  
+Reset = (("R"/"r")"emember" / ("U"/"u")"nderstand" ) _ v:Identifier {
 	return {
     	cmd: "reset",
         varname: v.varname
     };
 }
 
-Let = (("R"/"r")"emember" / ("U"/"u")"nderstand"  / ("R"/"r")"ecognize" ) _ v:Identifier _ "as" _ lbd:Lambda {
+AdditionalParams = (","/ (_ "and")) _ p:Identifier {
+	return p;
+}
+
+Let = (("R"/"r")"emember" / ("U"/"u")"nderstand"  / ("R"/"r")"ecognize" ) _ v:Identifier _ "with" _ p:Identifier a:AdditionalParams* _ "as" _ lbd:Lambda {
+	if (!!a) {
+	    p = [p].concat(a);
+    }
 	return {
     	cmd: "let",
         varname: v.varname,
-        lambda: lbd,
-        is_lambda: true
+        exp: lbd,
+        params: p
     };
-} / (("R"/"r")"emember" / ("U"/"u")"nderstand"  / ("R"/"r")"ecognize" ) _ v:Identifier _ "as" exp:Expression {
+} / (("R"/"r")"emember" / ("U"/"u")"nderstand"  / ("R"/"r")"ecognize" ) _ v:Identifier _ "as" lbd:Lambda {
 	return {
     	cmd: "let",
         varname: v.varname,
-        exp: exp,
-        is_lambda: false
+        exp: lbd,
+        params: []
     };
 }
 
@@ -69,4 +76,4 @@ Lambda = "lambda" {
 
       // exp: exp
     };
-}
+} / Expression
