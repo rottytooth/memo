@@ -9,8 +9,8 @@
     const DEBUG_SCRIPTS = ['../src/memo.js', '../src/memo.tools.js', '../build/memo.parser.js', '../src/memo.interpreter.js'];
     const PROD_SCRIPT = ['memo.js'];
 
-    function loadScripts(debug) {
-        const scripts = debug ? DEBUG_SCRIPTS : PROD_SCRIPT;
+    function loadScripts() {
+        const scripts = DEBUG ? DEBUG_SCRIPTS : PROD_SCRIPT;
         scripts.forEach(src => {
             const script = document.createElement('script');
             script.src = src;
@@ -18,7 +18,7 @@
             document.head.appendChild(script);
         });
     }
-    loadScripts(DEBUG);
+    loadScripts();
     </script>
     <script src="script.js" type="text/javascript"></script>
     <title>[]memo</title>
@@ -71,8 +71,12 @@
         <div id="filler"></div>
     </div>
     <div id="modal"><div id="modal_content"><span class="close" id='close'>&times;</span>[] memo<br/>
-        <p>A programming language where the last 12 lines are remembered. See more esolangs at https://danieltemkin.com/Esolangs.</p>
-        <p>Write commands like:</p>
-        <p>remember p as 1, 2, 3</p>
+        <p>A programming language for stream-of-conscious coding.</p>
+        <p>Write code in plain text like:</p>
+        <p>&nbsp; &nbsp; Remember p as one, two, three.</p>
+        <p>I read only what is on the screen; code flows off the terminal into oblivion. I do not understand parentheses or numerals.</p>
+        <p>Cookies are used only to store program state.</p>
+            
+        <p>See more esolangs at <a href="https://danieltemkin.com/Esolangs">https://danieltemkin.com/Esolangs</a>.</p>
     </div>
 </body></html>

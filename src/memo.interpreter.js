@@ -101,6 +101,42 @@ memo.RuntimeError = class extends Error {
         }
         return {type: "StringLiteral", value: val};
     }
+
+    oi.retire_var = function(ast, varname, var_replace) {
+        // Replace all instances of varname with what it evaluates to
+        if (ast && typeof ast === 'object') {
+            if ("left" in ast) {
+                if (ast.left.type == "VariableName" && ast.left.name["varname"] === varname) {
+                    ast.left = structuredClone(var_replace);
+                } else {
+                    oi.retire_var(ast.left, varname, var_replace);
+                }
+            }
+            if ("right" in ast) {
+                if (ast.right.type == "VariableName" && ast.right.name["varname"] === varname) {
+                    ast.right = structuredClone(var_replace);
+                } else {
+                    oi.retire_var(ast.right, varname, var_replace);
+                }
+            }
+        }
+    }
+
+    oi.retire = function(varname) {
+        // remove var and update all references to it
+        let var_reading = structuredClone(memo.varlist[varname]);
+        delete memo.varlist[varname];
+
+        for(const key in memo.varlist) {
+            // if it is exactly equal to another var, we can remove it first
+            // (as retire_var looks at left and right only)
+            if (memo.varlist[key].type == "VariableName" && memo.varlist[key].name["varname"] === varname) {
+                memo.varlist[key] = structuredClone(var_reading);
+            } else {
+                oi.retire_var(memo.varlist[key], varname, var_reading);
+            }
+        }
+    }
     
     oi.evalAndAssign = function(ast, varname, params) {
         ast = oi.evalExp(ast, params, false);
@@ -145,16 +181,22 @@ memo.RuntimeError = class extends Error {
 
         return str.charAt(0).toUpperCase() + str.slice(1) /*.toLowerCase()*/ + ".";
     };
+
     const fadeVars = (ast) => {
+        let to_delete = [];
         for (const key in memo.varlist) {
             if (!ast || !ast.all_vars || ast.all_vars.indexOf(key) == -1) {
                 memo.varlist[key].fade++;
                 if (memo.varlist[key].fade > 11) {
-                    delete memo.varlist[key];
+                    to_delete.push(key);
                 }
             }
         }
+        for (const key of to_delete) {
+            memo.interpreter.retire(key);
+        }
     };
+
     const getWordAt = (str, pos) => {
         // check ranges
         if ((pos < 0) || (pos > str.length)) {
@@ -178,6 +220,7 @@ memo.RuntimeError = class extends Error {
         // Remove any non-letter characters.
         return str.replace(/[^\p{L}]/gu, '');
     };
+
     oi.parse = function(input, isHtml = false) {
         let ast;
 
