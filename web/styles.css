@@ -233,3 +233,17 @@ input:focus, textarea:focus{
 	text-decoration: none;
 	cursor: pointer
 }
+.memo {
+    color: #a00;
+}
+#modal {
+    line-height: 18px;
+}
+#modal h3 {
+    padding-top: 20px;
+    text-align: left;
+}
+#modal code, #modal .inline {
+    background-color: #eee;
+    padding: 5px;
+}

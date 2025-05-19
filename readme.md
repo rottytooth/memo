@@ -2,6 +2,12 @@
 
 An interpreter that only performs what it can see. Code flows off the screen into oblivion.
 
+## Inspiration
+
+One day I was reading Paul Graham's *(on lisp)* and decided to make a lisp that uses no parantheses at all. It is written entirely in pseudo-natural language.
+
+
+
 ## To Use
 
 `memo.js` is the (non-minimized) production file.
