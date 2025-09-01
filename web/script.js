@@ -22,9 +22,23 @@ const updateStateList = () => {
         lead.innerHTML = "&nbsp;I remember";
         lead.className = "varname_store"
         let varname = row.insertCell();
-        varname.innerText = key;
         varname.classList.add("right_td"); 
-        varname.classList.add("vrbl");
+        let namespan = document.createElement("span");
+        namespan.innerText = key;
+        namespan.classList.add("vrbl");
+        varname.appendChild(namespan);
+        for (let i = 0; i < memo.varlist[key].params.length; i++) {
+            if (i == 0) {
+                varname.append(" with ");
+            } else {
+                varname.append(", ");
+            }
+            let paramspan = document.createElement("span");
+            paramspan.innerText = memo.varlist[key].params[i].varname;
+            paramspan.classList.add("vrbl");
+            varname.appendChild(paramspan);
+        }
+        varname.classList.add("right_td"); 
         let varvalue = row.insertCell();
         varvalue.innerHTML = `as ${memo.tools.expToStr(memo.varlist[key], true)}.`;
         row.style.opacity = `var(--n${memo.varlist[key].fade})`;
@@ -134,7 +148,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-document.addEventListener("click", () => {
+document.addEventListener("load", () => {
     var input = document.getElementById('n');
     input.focus();
+});
+document.addEventListener("keypress", (event) => {
+    var input = document.getElementById('n');
+    input.focus();
+    if (event.target.id !== 'n') {
+        const clonedEvent = new KeyboardEvent(event.type, {
+            key: event.key,
+            code: event.code,
+            isComposing: event.isComposing,
+            bubbles: event.bubbles,
+            cancelable: event.cancelable,
+            composed: event.composed
+        });
+        // event.target.id = 'n';
+        input.dispatchEvent(clonedEvent);
+    }
 });

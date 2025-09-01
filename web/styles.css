@@ -44,14 +44,13 @@ a:hover {
     position: absolute;
     top: 0;
     right: 0;
-    width: 33vw;
+    width: 42vw;
     padding: 1rem;
     margin-right: 10px;
     z-index: 100;
 
     border-width: 3px;
     background-color: #fff;
-    border-style: solid;
     border-image: 
       linear-gradient(
         to bottom, 
@@ -199,7 +198,7 @@ input:focus, textarea:focus{
 	width: 100%;
 	height: 100%;
 	overflow: auto;
-    display: none;
+    /* display: none; */
 	background-color: rgba(154, 153, 153, 0.1);
 }
 
@@ -233,4 +232,18 @@ input:focus, textarea:focus{
 	color: #000;
 	text-decoration: none;
 	cursor: pointer
+}
+.memo {
+    color: #a00;
+}
+#modal {
+    line-height: 18px;
+}
+#modal h3 {
+    padding-top: 20px;
+    text-align: left;
+}
+#modal code, #modal .inline {
+    background-color: #eee;
+    padding: 5px;
 }
