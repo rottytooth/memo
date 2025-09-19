@@ -41,7 +41,7 @@ a:hover {
     text-decoration: underline;
 }
 #state {
-    position: absolute;
+    position: fixed;
     top: 0;
     right: 0;
     width: 42vw;
@@ -50,7 +50,9 @@ a:hover {
     z-index: 100;
 
     border-width: 3px;
-    background-color: #fff;
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.80) 0%,
+        rgba(255, 255, 255, 0.80) 80%,
+        rgba(255, 255, 255, 0) 100%);
     border-image: 
       linear-gradient(
         to bottom, 
@@ -103,7 +105,7 @@ td.right_td {
     line-height: 110%;
     padding-bottom: 20px;
     font-size: 1em;
-    height: 20px;
+   min-height: 20px;
 }
 #fadeout span.response {
     display: inline;

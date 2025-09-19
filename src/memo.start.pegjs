@@ -49,7 +49,7 @@ Type = f:(("I"/"i")"nt" ("eger")?/("F"/"f")"loat"/("S"/"s")"tring"/("A"/"a")"rra
 	return "undetermined"
 }
 
-Print = ("T"/"t")"ell me" (_ "about")? _ exp:Identifier {
+Print = ("T"/"t")"ell me" (_ "about")? _ exp:Expression {
 	return {
     	cmd: "print",
         exp: exp

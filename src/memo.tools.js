@@ -72,9 +72,19 @@ memo.tools.floatToStr = (num) => {
         return `more than ${num >= 1 ? wholeStr + ' and' : ""} a half`;
     }
     return `almost ${memo.tools.intToStr(wholePart + 1)}`;
-}
+}    
+
+memo.tools.capitalize = (str) => {
+    // FIXME: this should not lowercase content in strings
+    if (!str || typeof str !== "string") return "";
+
+    return str.charAt(0).toUpperCase() + str.slice(1) /*.toLowerCase()*/ + ".";
+};
+
 
 memo.tools.expToStr = (node, isHtml) => {
+    // node: the AST node (an exp)
+    // isHtml: whether to format the output for HTML (color code)
     switch(node.type) {
         case "Additive":
             if (node.operator == "+")

@@ -67,7 +67,7 @@ memo.RuntimeError = class extends Error {
             case "VariableName":
                 if (node.name.varname in memo.varlist) {
                     if (currState) {
-                        return memo.varlist[node.name].value;
+                        return memo.varlist[node.name.varname].value;
                     }
                     return node;
                 }
@@ -156,7 +156,7 @@ memo.RuntimeError = class extends Error {
             return `I will remember ${ast.varname}.`;
     }
     
-    oi.evalCmd = function(ast) {
+    oi.evalCmd = function(ast, params) {
         switch(ast.cmd) {
             case "reset":
                 if (memo.varlist[ast.varname]) {
@@ -166,21 +166,18 @@ memo.RuntimeError = class extends Error {
             case "let": 
                 return oi.evalAndAssign(ast.exp, ast.varname, ast.params);
             case "print":
+                if (ast.exp.varname in memo.varlist) {
+                    return memo.tools.expToStr(
+                        oi.evalExp(
+                            ast.exp, ast.params, true)
+                    );
+                }
+
                 // this exp needs to actually be evaluated, currently assumes
                 // the exp is just a variable
-                if (!(ast.exp.varname in memo.varlist)) {
-                    return `Hmm I don't remember ${ast.exp.varname}.`;
-                }
-                return capitalize(`${ast.exp.varname} is ${memo.tools.expToStr(memo.varlist[ast.exp.varname], false)}`);
+                return oi.evalExp(ast.exp, ast.params, true);
         }
     }
-    
-    const capitalize = (str) => {
-        // FIXME: this should not lowercase content in strings
-        if (!str || typeof str !== "string") return "";
-
-        return str.charAt(0).toUpperCase() + str.slice(1) /*.toLowerCase()*/ + ".";
-    };
 
     const fadeVars = (ast) => {
         let to_delete = [];
