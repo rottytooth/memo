@@ -24,36 +24,87 @@ memo.RuntimeError = class extends Error {
         return [];
     }
 
+    oi.mathyStuff = (left, right, operator) => {
+        if (left.type == "Range") {
+            left = memo.tools.rangeToList(left);
+        }
+        if (right.type == "Range") {
+            right = memo.tools.rangeToList(right);
+        }
+
+        // a list looks like: {type: 'List', exp: Array}
+        if (left.type === "List" && right.type === "List") {
+            const maxLen = Math.max(left.exp.length, right.exp.length);
+            const results = {type: 'List', exp: []};
+            for (let i = 0; i < maxLen; i++) {
+                const l = i < left.exp.length ? left.exp[i] : {type: 'IntLiteral', value: 0};
+                const r = i < right.exp.length ? right.exp[i] : {type: 'IntLiteral', value: 0};
+                results.exp.push(oi.mathyStuff(l, r, operator));
+            }
+            return {type: 'List', exp: results};
+        }
+        if (left.type === "List") {
+            // left is a List, right is a value
+            const results = left.exp.map(item => oi.mathyStuff(item, right, operator));
+            return {type: 'List', exp: results};
+        }
+        if (right.type === "List") {
+            // right is a List, left is a value
+            const results = right.exp.map(item => oi.mathyStuff(left, item, operator));
+            return {type: 'List', exp: results};
+        }
+        // here we're using JavaScript's rules on how to add things
+        // (which are always correct and sensible, as it is JavaScript)
+        switch (operator) {
+            case "+":
+                return oi.determineType(left.value + right.value);
+            case "-":
+                return oi.determineType(left.value - right.value);
+            case "*":
+                return oi.determineType(left.value * right.value);
+            case "/":
+                return oi.determineType(left.value / right.value);
+            default:
+                throw new Error(`Unknown operator: ${operator}`);
+        }
+    }
+
+    /*
+     * Evaluate an expression node, returning a resolved node
+     * { type:..., operator:..., left:..., right:..., params: [] }
+     * 
+     * currState = resolve all variables, used for printing
+     * when false, it is quoted
+     */
     oi.evalExp = function(node, params, currState = false) {
-        // currState means resolves all variables
-        // when false, it is quoted
         if (node.left) 
             node.left = oi.evalExp(node.left, params, currState);
         if (node.right)
             node.right = oi.evalExp(node.right, params, currState);
         if (node.exp) {
             if (Array.isArray(node.exp)) {
-                for (let i = 0; i < node.exp.length; i++) {
-                    node.exp[i] = oi.evalExp(node.exp[i], params, currState);
+                if (node.start && node.end && typeof node.start.value === 'number' && typeof node.end.value === 'number' && node.start.value > node.end.value) {
+                    for (let i = node.exp.length - 1; i >= 0; i--) {
+                        node.exp[i] = oi.evalExp(node.exp[i], params, currState);
+                    }
+                } else {
+                    for (let i = 0; i < node.exp.length; i++) {
+                        node.exp[i] = oi.evalExp(node.exp[i], params, currState);
+                    }
                 }
-            } else
+            } else {
                 node.exp = oi.evalExp(node.exp, params, currState);
+            }
         }
         switch(node.type) {
             case "Additive":
             case "Multiplicative":
                 if (currState || 
+                    // if there are no dependencies on either side, we can resolve right away
                     (oi.getDependencies(node.left).length == 0 && 
                     oi.getDependencies(node.right).length == 0)) {
 
-                    if (node.operator == "+")
-                        return oi.determineType(node.left.value + node.right.value);
-                    if (node.operator == "-")
-                        return oi.determineType(node.left.value - node.right.value);
-                    if (node.operator == "*")
-                        return oi.determineType(node.left.value * node.right.value);
-                    if (node.operator == "/")
-                        return oi.determineType(node.left.value / node.right.value);
+                    return(oi.mathyStuff(node.left, node.right, node.operator));
                 }
                 return node;
             case "IntLiteral":
@@ -61,15 +112,28 @@ memo.RuntimeError = class extends Error {
             case "StringLiteral":
             case "Comparison":
             case "Conditional":
-            case "Range":
             case "List":
+                return node;
+            case "Range":
+                if (currState) {
+                    let retval = { type: "List", exp: []};
+                    if (node.start.value <= node.end.value) {
+                        for (let i = node.start.value; i <= node.end.value; i += 1) {
+                            retval.exp.push(oi.evalExp({type: "IntLiteral", value: i}, params, currState));
+                        }
+                    }
+                    for (let i = node.start.value; i >= node.end.value; i -= 1) {
+                        retval.exp.push(oi.evalExp({type: "IntLiteral", value: i}, params, currState));
+                    }
+                    return retval;
+                }
                 return node;
             case "VariableName":
                 if (node.name.varname in memo.varlist) {
                     if (currState) {
-                        return memo.varlist[node.name.varname].value;
+                        return oi.evalExp(memo.varlist[node.name.varname], params, currState);
                     }
-                    return node;
+                    return memo.varlist[node.name.varname];
                 }
                 const matchingParam = params.find(param => param.varname === node.name.varname);
                 if (matchingParam) {
@@ -79,21 +143,27 @@ memo.RuntimeError = class extends Error {
                     return node;
                 }
                 throw new memo.RuntimeError(`I don't remember ${node.name.varname}.`, node.name.varname);
-            case "List":
-                return node.exp.length;
             default:
                 throw new memo.RuntimeError("I don't know how to evaluate that.", node.type);
         }
     }
 
     oi.determineType = function(val) {
-        const attemptInt = parseInt(val);
-        const attemptFloat = parseFloat(val);
-        
-        if (!isNaN(attemptInt) && attemptInt == attemptFloat) {
+        if (typeof val === 'number' && Number.isInteger(val)) {
+            return {type: "IntLiteral", value: val};
+        }
+        if (typeof val === 'number') {
+            return {type: "FloatLiteral", value: val};
+        }
+
+        let trimmed = (typeof val === 'string') ? val.trim() : val;
+        let intPattern = /^-?\d+$/;
+        if (typeof trimmed === 'string' && intPattern.test(trimmed)) {
+            const attemptInt = parseInt(trimmed, 10);
             return {type: "IntLiteral", value: attemptInt};
         }
-        if (!isNaN(attemptFloat)) {
+        const attemptFloat = parseFloat(trimmed);
+        if (!isNaN(attemptFloat) && typeof trimmed === 'string' && /^-?\d*\.\d+$/.test(trimmed)) {
             return {type: "FloatLiteral", value: attemptFloat};
         }
         if (typeof(val) == "string" && val.length == 1) {
@@ -160,22 +230,15 @@ memo.RuntimeError = class extends Error {
         switch(ast.cmd) {
             case "reset":
                 if (memo.varlist[ast.varname]) {
-                    return `I remember ${ast.varname} as ${memo.tools.expToStr(memo.varlist[ast.varname])}.`;
+                    return `I remember ${ast.varname} as ${memo.tools.expToStr(memo.varlist[ast.varname], false)}.`;
                 }
                 return `I don't remember ${ast.varname}.`;
             case "let": 
                 return oi.evalAndAssign(ast.exp, ast.varname, ast.params);
             case "print":
-                if (ast.exp.varname in memo.varlist) {
-                    return memo.tools.expToStr(
-                        oi.evalExp(
-                            ast.exp, ast.params, true)
-                    );
-                }
-
-                // this exp needs to actually be evaluated, currently assumes
-                // the exp is just a variable
-                return oi.evalExp(ast.exp, ast.params, true);
+                return memo.tools.expToStr(
+                    oi.evalExp(ast.exp, params, true), false
+                )
         }
     }
 
