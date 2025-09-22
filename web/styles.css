@@ -213,10 +213,10 @@ input:focus, textarea:focus{
 	padding: 30px;
 	border-radius: 10px;
 	overflow: hidden;
-	text-align: center;
 	box-shadow: 1px 1px 14px 3px rgba(154, 153, 153,0.25);	
     pointer-events: all;
     z-index: 9900;
+    line-height: 150%;
 }
 #modal_content p {
     width: 100%;
@@ -248,4 +248,7 @@ input:focus, textarea:focus{
 #modal code, #modal .inline {
     background-color: #eee;
     padding: 5px;
+}
+#modal_content code {
+    margin-left: 50px;
 }

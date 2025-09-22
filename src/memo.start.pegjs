@@ -1,12 +1,16 @@
 {
-class MemoSyntaxError extends Error {
-  constructor(msg, code, details) { 
-    super(msg);
-    this.code = code;
-    this.details = details;
-  }
-}
-
+	class MemoSyntaxError extends Error {
+		constructor(msg, code, details) { 
+			super(msg);
+			this.code = code;
+			this.details = details;
+		}
+	}
+	function flattenToString(input) {
+		return Array.isArray(input)
+			? input.flat(Infinity).join('')
+			: String(input);
+	}
 }
 
 Command = c:(Print / Let / Reset) ("."?/"!"?) _* {
@@ -62,11 +66,10 @@ Identifier = v:NumberLiteral {
 / v:("remember"/"million"/"thousand"/"hundred"/"billion") // add other reserved words here
 {
   throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", v)
-}
-/ v:[a-zA-ZäöüßÄÖÜ_]+ {
+} / v:([a-zA-ZäöüßÄÖÜ_]([a-z0-9A-ZäöüßÄÖÜ_])*) {
 	return {
         type: "Variable",
-        varname: v.join("")
+        varname: flattenToString(v)
     };
 }
 

@@ -143,6 +143,8 @@ memo.RuntimeError = class extends Error {
                     return node;
                 }
                 throw new memo.RuntimeError(`I don't remember ${node.name.varname}.`, node.name.varname);
+            case "VariableWithParam":
+                throw new memo.RuntimeError(`I don't know how to handle parameters yet.`, node.name.varname);
             default:
                 throw new memo.RuntimeError("I don't know how to evaluate that.", node.type);
         }

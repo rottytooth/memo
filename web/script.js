@@ -29,7 +29,7 @@ const updateStateList = () => {
         varname.appendChild(namespan);
         for (let i = 0; i < memo.varlist[key].params.length; i++) {
             if (i == 0) {
-                varname.append(" with ");
+                varname.append("(");
             } else {
                 varname.append(", ");
             }
@@ -37,6 +37,9 @@ const updateStateList = () => {
             paramspan.innerText = memo.varlist[key].params[i].varname;
             paramspan.classList.add("vrbl");
             varname.appendChild(paramspan);
+        }
+        if (memo.varlist[key].params.length > 0) {
+            varname.append(")");
         }
         varname.classList.add("right_td"); 
         let varvalue = row.insertCell();
