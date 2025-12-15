@@ -17,7 +17,7 @@ module.exports = function(grunt) {
               dest: 'build/memo.pegjs'
             },
             dist2 : {
-              src: ['src/memo.js','memo.tools.js','build/memo.parser.js','src/memo.interpreter.js'],
+              src: ['src/memo.js','src/memo.tools.js','src/memo.preprocess.js', 'build/memo.parser.js','src/memo.interpreter.js'],
               dest: 'memo.js'
             },
         },

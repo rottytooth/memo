@@ -2,6 +2,10 @@
   "author": "Daniel Temkin <dt@danieltemkin.com>",
   "homepage": "https://danieltemkin.com/Esolangs/memo",
   "license": "MIT",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
   "dependencies": {
     "grunt-contrib-concat": "^2.1.0"
   },
@@ -9,6 +13,7 @@
     "grunt": "^1.6.1",
     "grunt-contrib-copy": "^1.0.0",
     "grunt-run": "^0.8.1",
+    "jest": "^29.7.0",
     "peggy": "^4.2.0"
   }
 }

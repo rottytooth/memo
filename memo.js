@@ -1,4 +1,339 @@
-memo = {}
+memo = {};
+
+memo.tools = {
+// String utils for the []memo language
+// How to describe data in plain English
+}
+
+memo.tools.intToStr = (num) => {
+    // FIXME: what happens over a billion?
+    const ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+    const teens = ["", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+    const tens = ["", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+    const thousands = ["", "thousand", "million", "billion"];
+
+    if (num === 0) return "zero";
+
+    let word = "";
+    let numStr = num.toString();
+    let groupIndex = 0;
+
+    if (numStr[0] === "-") {
+        word += "negative ";
+        numStr = numStr.slice(1);
+    }
+
+    while (numStr.length > 0) {
+        let group = parseInt(numStr.slice(-3)) || 0;
+        numStr = numStr.slice(0, -3);
+
+        if (group > 0) {
+            let groupWord = "";
+
+            if (group >= 100) {
+                groupWord += ones[Math.floor(group / 100)] + " hundred ";
+                group %= 100;
+            }
+
+            if (group >= 11 && group <= 19) {
+                groupWord += teens[group - 10] + " ";
+            } else {
+                if (group >= 10) {
+                    groupWord += tens[Math.floor(group / 10)] + " ";
+                }
+                if (group % 10 > 0) {
+                    groupWord += ones[group % 10] + " ";
+                }
+            }
+
+            word = groupWord + thousands[groupIndex] + " " + word;
+        }
+
+        groupIndex++;
+    }
+
+    return word.trim();
+}
+
+memo.tools.floatToStr = (num) => {
+    const wholePart = parseInt(String(num).split('.')[0]);
+    const decimalPart = String(num).split('.')[1];
+    const floatPart = decimalPart ? parseFloat('0.' + decimalPart) : 0;
+    const wholeStr = memo.tools.intToStr(wholePart);
+
+    if (floatPart < 0.2) {
+        return `more than ${wholeStr}`;
+    } 
+    if (floatPart < 0.4) {
+        return `${num >= 1 ? wholeStr + ' and' : ""} a third`;
+    }
+    if (floatPart < 0.6) {
+        return `${num >= 1 ? wholeStr + ' and' : ""} a half`;
+    }
+    if (floatPart < 0.8) {
+        return `more than ${num >= 1 ? wholeStr + ' and' : ""} a half`;
+    }
+    return `almost ${memo.tools.intToStr(wholePart + 1)}`;
+}    
+
+memo.tools.capitalize = (str) => {
+    // FIXME: this should not lowercase content in strings
+    if (!str || typeof str !== "string") return "";
+
+    return str.charAt(0).toUpperCase() + str.slice(1) /*.toLowerCase()*/ + ".";
+};
+
+memo.tools.rangeToList = (range) => {
+    let step = 1;
+    if (range.end.value < range.start.value) {
+        step = -1;
+    }
+    return { type: "List", exp: Array.from({length: range.end.value - range.start.value + 1}, (_, i) => ({type: "IntLiteral", value: range.start.value + i * step})) };
+}
+
+memo.tools.expToStr = (node, isHtml) => {
+    // node: the AST node (an exp)
+    // isHtml: whether to format the output for HTML (color code)
+    switch(node.type) {
+        case "Additive":
+            if (node.operator == "+")
+                return `(${memo.tools.expToStr(node.left, isHtml)} plus ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "-")
+                return `(${memo.tools.expToStr(node.left, isHtml)} minus ${memo.tools.expToStr(node.right, isHtml)})`;
+        case "Multiplicative":
+            if (node.operator == "*")
+                return `(${memo.tools.expToStr(node.left, isHtml)} times ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "/")
+                return `(${memo.tools.expToStr(node.left, isHtml)} divided by ${memo.tools.expToStr(node.right, isHtml)})`; 
+        case "IntLiteral":
+            return memo.tools.intToStr(node.value);
+        case "FloatLiteral":
+                return memo.tools.floatToStr(node.value);
+        case "CharLiteral":
+            return `'${node.value}'`;
+        case "StringLiteral":
+            return `"${node.value}"`;
+        case "VariableName":
+            if (isHtml) {
+                return `<span class="vrbl">${node.name["varname"]}</span>`
+            }
+            return node.name["varname"];
+        case "Comparison":
+            if (node.operator == "==")
+                return `(${memo.tools.expToStr(node.left, isHtml)} equals ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "!=")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is not equal to ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == ">")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is greater than ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == ">=")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is greater than or equal to ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "<")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is less than ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "<=")
+                return `(${memo.tools.expToStr(node.left, isHtml)} is less than or equal to ${memo.tools.expToStr(node.right, isHtml)})`;
+        case "Conditional":
+            let toret = `if ${memo.tools.expToStr(node.comp, isHtml)} then ${memo.tools.expToStr(node.exp, isHtml)}`;
+            if (node.else_cond) {
+                node.else_cond.forEach((cond) => {
+                    toret += ` else if ${memo.tools.expToStr(cond.comp, isHtml)} then ${memo.tools.expToStr(cond.exp, isHtml)}`;
+                });
+            }
+            if (node.f_else) {
+                toret += ` else ${memo.tools.expToStr(node.f_else, isHtml)}`;
+            }
+            return toret;
+        case "List":
+            let gt = ">";
+            let lt = "<";
+            if (isHtml) {
+                gt = "&gt;";
+                lt = "&lt;";
+            }
+            let retval = `${lt}${node.exp.map((elem) => memo.tools.expToStr(elem, isHtml)).join(", ")}${gt}`;
+            return retval;
+        case "Range":
+            // only if NOT currState
+            return `from ${memo.tools.expToStr(node.start, isHtml)} to ${memo.tools.expToStr(node.end, isHtml)}`;
+        case "Lambda":
+        default:
+            return "";
+    }
+}
+
+memo.preprocess = function(input) {
+    // Preserve string literals - we don't want to modify them
+    const stringLiterals = [];
+    let processed = input.replace(/(["'"])[^"']*\1/g, (match) => {
+        stringLiterals.push(match);
+        return `__STRING_${stringLiterals.length - 1}__`;
+    });
+
+    // Normalize whitespace
+    processed = processed.replace(/\s+/g, ' ').trim();
+
+    // Command synonyms - normalize to canonical forms
+    const commandSynonyms = {
+        // Remember/Understand variants
+        'set': 'remember',
+        'define': 'remember',
+        'make': 'remember',
+        'create': 'remember',
+        'let': 'remember',
+        'assign': 'remember',
+        'store': 'remember',
+        'save': 'remember',
+        'keep': 'remember',
+        
+        // Tell me variants
+        'show me': 'tell me',
+        'display': 'tell me',
+        'print': 'tell me',
+        'output': 'tell me',
+        'what is': 'tell me about',
+        'what\'s': 'tell me about',
+        'give me': 'tell me',
+    };
+
+    // Apply command synonyms (case-insensitive)
+    for (const [variant, canonical] of Object.entries(commandSynonyms)) {
+        const regex = new RegExp(`\\b${variant}\\b`, 'gi');
+        processed = processed.replace(regex, canonical);
+    }
+
+    // Context-aware parameter handling
+    // For DEFINITION context: "Remember x [VARIANT] p as ..."
+    // Replace variants with "with" before "as"
+    const definitionParamVariants = {
+        'taking': 'with',
+        'using': 'with',
+        'accepting': 'with',
+        'given': 'with',
+        'receiving': 'with',
+        'having': 'with',
+    };
+
+    for (const [variant, canonical] of Object.entries(definitionParamVariants)) {
+        // Match: (remember/understand/recognize) identifier variant identifier(s) as
+        const regex = new RegExp(
+            `((?:remember|understand|recognize)\\s+[a-zA-Z_][a-zA-Z0-9_]*)\\s+${variant}\\s+([^\\s]+(?:\\s+and\\s+[^\\s]+)*)\\s+as`,
+            'gi'
+        );
+        processed = processed.replace(regex, `$1 ${canonical} $2 as`);
+    }
+
+    // For EXPRESSION/CALL context: "identifier [VARIANT] parameter"
+    // Add variations that resolve to "with" in expression context
+    const callParamVariants = {
+        'given': 'with',
+        'of': 'with',
+        'applied to': 'with',
+        'for': 'with',
+        'on': 'with',
+    };
+
+    for (const [variant, canonical] of Object.entries(callParamVariants)) {
+        // Match: identifier variant identifier (but NOT before "as")
+        // Use negative lookahead to avoid matching definition context
+        const regex = new RegExp(
+            `\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s+${variant}\\s+([a-zA-Z_][a-zA-Z0-9_]*)(?!\\s+as)`,
+            'gi'
+        );
+        processed = processed.replace(regex, `$1 ${canonical} $2`);
+    }
+
+    // Function-call style notation: identifier(param) -> identifier with param
+    // Only in expression context (not in definitions)
+    processed = processed.replace(
+        /\b([a-zA-Z_][a-zA-Z0-9_]*)\(([a-zA-Z_][a-zA-Z0-9_]*)\)(?!\s+as)/g,
+        '$1 with $2'
+    );
+
+    // Operator synonyms
+    const operatorSynonyms = {
+        // Addition
+        'add': 'plus',
+        'added to': 'plus',
+        'adding': 'plus',
+        'sum of': 'sum',
+        'total of': 'sum',
+        'combined with': 'plus',
+        
+        // Subtraction
+        'subtract': 'minus',
+        'subtracted from': 'minus',
+        'subtracting': 'minus',
+        'less': 'minus',
+        'take away': 'minus',
+        
+        // Multiplication
+        'multiply': 'times',
+        'multiplied by': 'times',
+        'mult': 'times',
+        'product of': 'product',
+        
+        // Division
+        'divide': 'divided by',
+        'divided': 'divided by',
+        'div': 'divided by',
+        'over': 'divided by',
+        'quotient of': 'quotient',
+        
+        // Modulo
+        'mod': 'modulo',
+        'remainder': 'modulo',
+        'remainder of': 'modulus',
+    };
+
+    for (const [variant, canonical] of Object.entries(operatorSynonyms)) {
+        const regex = new RegExp(`\\b${variant}\\b`, 'gi');
+        processed = processed.replace(regex, canonical);
+    }
+
+    // Comparison operator variations
+    const comparisonSynonyms = {
+        'equals': 'is equal to',
+        'equal to': 'is equal to',
+        
+        'not equal to': 'is not equal to',
+        'doesn\'t equal': 'is not equal to',
+        'does not equal': 'is not equal to',
+        
+        'greater than': 'is greater than',
+        'less than': 'is less than',
+    };
+
+    for (const [variant, canonical] of Object.entries(comparisonSynonyms)) {
+        const regex = new RegExp(`\\b${variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+        processed = processed.replace(regex, canonical);
+    }
+
+    // Handle "to be" constructions -> "as" (only in definition context)
+    processed = processed.replace(/\b(remember|understand|recognize)\b([^.!]*?)\bto be\b/gi, '$1$2as');
+    
+    // Remove common filler words that don't affect meaning
+    const fillerWords = [
+        'please',
+        'kindly',
+        'the value of',
+    ];
+    
+    for (const filler of fillerWords) {
+        const regex = new RegExp(`\\b${filler}\\b`, 'gi');
+        processed = processed.replace(regex, '');
+    }
+
+    // Normalize multiple spaces back to single space
+    processed = processed.replace(/\s+/g, ' ').trim();
+
+    // Restore string literals
+    stringLiterals.forEach((literal, index) => {
+        processed = processed.replace(`__STRING_${index}__`, literal);
+    });
+
+    return processed;
+};
+
+
 // @generated by Peggy 4.2.0.
 //
 // https://peggyjs.org/
@@ -682,6 +1017,8 @@ function peg$parse(input, options) {
 };
   var peg$f49 = function(end) {
 	if (DEBUG) console.log("in MillionsDigit");
+	if (end == "a") 
+		end = 1;
 	return end * 1000000;
 };
   var peg$f50 = function(hun, end) {
@@ -4979,14 +5316,18 @@ memo.RuntimeError = class extends Error {
                     }
                     return memo.varlist[node.name.varname];
                 }
-                const matchingParam = params.find(param => param.varname === node.name.varname);
-                if (matchingParam) {
-                    if (currState) {
-                        return matchingParam.value;
+                if (params) {
+                    const matchingParam = params.find(param => param.varname === node.name.varname);
+                    if (matchingParam) {
+                        if (currState) {
+                            return matchingParam.value;
+                        }
+                        return node;
                     }
-                    return node;
                 }
                 throw new memo.RuntimeError(`I don't remember ${node.name.varname}.`, node.name.varname);
+            case "VariableWithParam":
+                throw new memo.RuntimeError(`I don't know how to handle parameters yet.`, node.name.varname);
             default:
                 throw new memo.RuntimeError("I don't know how to evaluate that.", node.type);
         }
@@ -5125,10 +5466,13 @@ memo.RuntimeError = class extends Error {
         return str.replace(/[^\p{L}]/gu, '');
     };
 
-    oi.parse = function(input, isHtml = false) {
+    oi.parse = function(input) {
         let ast;
 
         input = input.trim();
+
+        // Preprocess input
+        input = memo.preprocess(input);
 
         try {
             ast = memo.parser.parse(input);

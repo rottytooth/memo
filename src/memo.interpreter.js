@@ -135,12 +135,14 @@ memo.RuntimeError = class extends Error {
                     }
                     return memo.varlist[node.name.varname];
                 }
-                const matchingParam = params.find(param => param.varname === node.name.varname);
-                if (matchingParam) {
-                    if (currState) {
-                        return matchingParam.value;
+                if (params) {
+                    const matchingParam = params.find(param => param.varname === node.name.varname);
+                    if (matchingParam) {
+                        if (currState) {
+                            return matchingParam.value;
+                        }
+                        return node;
                     }
-                    return node;
                 }
                 throw new memo.RuntimeError(`I don't remember ${node.name.varname}.`, node.name.varname);
             case "VariableWithParam":
@@ -283,10 +285,19 @@ memo.RuntimeError = class extends Error {
         return str.replace(/[^\p{L}]/gu, '');
     };
 
-    oi.parse = function(input, isHtml = false) {
+    oi.parse = function(input) {
         let ast;
 
         input = input.trim();
+
+        if (DEBUG)
+            console.log("Before preprocessing: ", input);
+
+        // Preprocess input
+        input = memo.preprocess(input);
+
+        if (DEBUG)
+            console.log("After preprocessing: ", input);
 
         try {
             ast = memo.parser.parse(input);
