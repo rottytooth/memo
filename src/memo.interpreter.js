@@ -16,7 +16,7 @@ memo.RuntimeError = class extends Error {
         if (!node) return [];
 
         if (node.type === "VariableName") {
-            return node.name["varname"];
+            return [node.name["varname"]];
         }
         if (node.left && node.right) {
             return oi.getDependencies(node.left).concat(oi.getDependencies(node.right));
@@ -133,7 +133,8 @@ memo.RuntimeError = class extends Error {
                     if (currState) {
                         return oi.evalExp(memo.varlist[node.name.varname], params, currState);
                     }
-                    return memo.varlist[node.name.varname];
+                    // When currState is false, keep the variable reference as-is
+                    return node;
                 }
                 if (params) {
                     const matchingParam = params.find(param => param.varname === node.name.varname);
@@ -212,12 +213,61 @@ memo.RuntimeError = class extends Error {
         }
     }
     
+    oi.checkCircularDependency = function(varname, dependencies, visited = new Set()) {
+        // Check if defining varname with these dependencies would create a cycle
+        if (!dependencies || dependencies.length === 0) {
+            return false; // No dependencies, no cycle
+        }
+        
+        for (const dep of dependencies) {
+            if (dep === varname) {
+                // Direct self-reference
+                return true;
+            }
+            
+            if (visited.has(dep)) {
+                // We've already checked this dependency in this path
+                continue;
+            }
+            
+            visited.add(dep);
+            
+            // Check if this dependency exists in varlist
+            if (dep in memo.varlist) {
+                const depVar = memo.varlist[dep];
+                const depDependencies = oi.getDependencies(depVar);
+                
+                // Recursively check if any of dep's dependencies lead back to varname
+                if (depDependencies && depDependencies.length > 0) {
+                    for (const nestedDep of depDependencies) {
+                        if (nestedDep === varname) {
+                            return true; // Found a cycle
+                        }
+                        
+                        // Recursively check deeper
+                        if (oi.checkCircularDependency(varname, [nestedDep], new Set(visited))) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+    
     oi.evalAndAssign = function(ast, varname, params) {
         ast = oi.evalExp(ast, params, false);
         ast.params = params;
         ast.varname = varname;
         if ("exp" in ast) {
             ast.deps = oi.getDependencies(ast.exp);
+        }
+
+        // Check for circular dependencies
+        const dependencies = oi.getDependencies(ast);
+        if (oi.checkCircularDependency(varname, dependencies)) {
+            throw new memo.RuntimeError(`I cannot remember ${varname} that way; it would create a circular dependency.`);
         }
 
         ast.has_value = !!ast.value;
@@ -232,6 +282,12 @@ memo.RuntimeError = class extends Error {
     
     oi.evalCmd = function(ast, params) {
         switch(ast.cmd) {
+            case "clear":
+                memo.varlist = {};
+                if (typeof clearMemory === 'function') {
+                    clearMemory();
+                }
+                return "I have forgotten everything.";
             case "reset":
                 if (memo.varlist[ast.varname]) {
                     return `I remember ${ast.varname} as ${memo.tools.expToStr(memo.varlist[ast.varname], false)}.`;

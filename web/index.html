@@ -20,6 +20,7 @@
     }
     loadScripts();
     </script>
+    <script src="state-manager.js" type="text/javascript"></script>
     <script src="script.js" type="text/javascript"></script>
     <title>[]memo</title>
     <script type="text/javascript">
@@ -36,19 +37,71 @@
        var modal_content = document.getElementById("modal");
        modal.style.display = "none";
        modal_content.style.display = "none";
+       document.getElementById("n").focus();
+    }
+
+    function close_modal_and_remember(e) {
+       close_modal(e);
+       // Mark modal as dismissed so it doesn't show again
+       if (typeof MemoStateManager !== 'undefined') {
+           MemoStateManager.setModalDismissed();
+       }
+    }
+
+    function toggleView() {
+        const stateView = document.getElementById('state');
+        const canvasView = document.getElementById('canvas-view');
+        const toggleKnob = document.getElementById('toggle-knob');
+        
+        if (stateView.classList.contains('active')) {
+            stateView.classList.remove('active');
+            canvasView.classList.add('active');
+            toggleKnob.classList.add('right');
+        } else {
+            canvasView.classList.remove('active');
+            stateView.classList.add('active');
+            toggleKnob.classList.remove('right');
+        }
+        
+        // Stop propagation to prevent modal close
+        event.stopPropagation();
     }
 
     window.addEventListener("load", function() {
-        document.getElementsByTagName("body")[0].onclick = close_modal;
+        // Only show modal on first visit (if it hasn't been dismissed before)
+        let shouldShowModal = true;
+        if (typeof MemoStateManager !== 'undefined') {
+            const wasDismissed = MemoStateManager.wasModalDismissed();
+            if (wasDismissed) {
+                shouldShowModal = false;
+            }
+        }
+        
+        if (shouldShowModal) {
+            open_modal();
+        }
+        
+        document.getElementsByTagName("body")[0].onclick = close_modal_and_remember;
         document.getElementById("modal").onclick = () => {return true;};
-        document.getElementById("close").onclick = close_modal;
+        document.getElementById("close").onclick = close_modal_and_remember;
     });
     </script>
 </head>
 <body>
-    <div id="state">
-        <h1><a href="javascript:open_modal();">[] memo</a></h1><br/>
-        <table id="state_table"><tbody></tbody></table>
+    <div id="state-container">
+        <div id="view-toggle" class="rocker-switch" onclick="toggleView();">
+            <div id="toggle-knob" class="toggle-knob right"></div>
+        </div>
+        
+        <div id="state" class="view-panel">
+            <h1><a href="javascript:open_modal();">[] memo</a></h1><br/>
+            <table id="state_table"><tbody></tbody></table>
+        </div>
+        
+        <div id="canvas-view" class="view-panel active">
+            <h1><a href="javascript:open_modal();">[] memo</a></h1><br/>
+            <canvas id="memo-canvas"></canvas>
+        </div>
     </div>
     <div id="box">
         <div id="content">

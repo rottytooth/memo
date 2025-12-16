@@ -13,8 +13,14 @@
 	}
 }
 
-Command = c:(Print / Let / Reset) ("."?/"!"?) _* {
+Command = c:(Clear / Print / Let / Reset) ("."?/"!"?) _* {
 	return c;
+}
+
+Clear = (("C"/"c")"lear" / ("F"/"f")"orget") {
+	return {
+    	cmd: "clear"
+    };
 }
 
 Reset = (("R"/"r")"emember" / ("U"/"u")"nderstand" ) _ v:Identifier {

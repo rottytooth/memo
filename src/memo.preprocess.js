@@ -9,6 +9,11 @@ memo.preprocess = function(input) {
     // Normalize whitespace
     processed = processed.replace(/\s+/g, ' ').trim();
 
+    // Handle clear/reset variants -> "clear"
+    processed = processed.replace(/\bforget\s+all\b/gi, 'clear');
+    processed = processed.replace(/\breset\b/gi, 'clear');
+    processed = processed.replace(/\bforget\b/gi, 'clear');
+
     // Handle "x is value" assignment syntax -> "remember x as value"
     // Match: identifier followed by "is" followed by value/expression
     // But not when "is" is part of "what is" or comparison operators
