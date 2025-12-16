@@ -77,6 +77,11 @@ memo.RuntimeError = class extends Error {
      * when false, it is quoted
      */
     oi.evalExp = function(node, params, currState = false) {
+        // When currState is true, work on a copy to avoid mutating stored variables
+        if (currState && node && typeof node === 'object') {
+            node = structuredClone(node);
+        }
+        
         if (node.left) 
             node.left = oi.evalExp(node.left, params, currState);
         if (node.right)
@@ -360,7 +365,12 @@ memo.RuntimeError = class extends Error {
         } catch (e) {
             fadeVars();
             if (e.name == "SyntaxError") {
-                return `I didn't understand ${getWordAt(input, e.location.start.column - 1)}.`;
+                const word = getWordAt(input, e.location.start.column - 1);
+                if (word) {
+                    return `I didn't understand ${word}.`;
+                } else {
+                    return `I didn't understand.`;
+                }
             } else if ("code" in e && e.code == "reserved") {
                 if (!isNaN(parseInt(e.details.name))) {
                     // FIXME: This should probably just pull the name from the request. But currently this serves as a test that it is actually a bad int
