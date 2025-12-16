@@ -72,9 +72,26 @@ memo.tools.floatToStr = (num) => {
         return `more than ${num >= 1 ? wholeStr + ' and' : ""} a half`;
     }
     return `almost ${memo.tools.intToStr(wholePart + 1)}`;
+}    
+
+memo.tools.capitalize = (str) => {
+    // FIXME: this should not lowercase content in strings
+    if (!str || typeof str !== "string") return "";
+
+    return str.charAt(0).toUpperCase() + str.slice(1) /*.toLowerCase()*/ + ".";
+};
+
+memo.tools.rangeToList = (range) => {
+    let step = 1;
+    if (range.end.value < range.start.value) {
+        step = -1;
+    }
+    return { type: "List", exp: Array.from({length: range.end.value - range.start.value + 1}, (_, i) => ({type: "IntLiteral", value: range.start.value + i * step})) };
 }
 
 memo.tools.expToStr = (node, isHtml) => {
+    // node: the AST node (an exp)
+    // isHtml: whether to format the output for HTML (color code)
     switch(node.type) {
         case "Additive":
             if (node.operator == "+")
@@ -99,8 +116,6 @@ memo.tools.expToStr = (node, isHtml) => {
                 return `<span class="vrbl">${node.name["varname"]}</span>`
             }
             return node.name["varname"];
-        case "Range":
-            return `from ${memo.tools.expToStr(node.start, isHtml)} to ${memo.tools.expToStr(node.end, isHtml)}`;
         case "Comparison":
             if (node.operator == "==")
                 return `(${memo.tools.expToStr(node.left, isHtml)} equals ${memo.tools.expToStr(node.right, isHtml)})`;
@@ -134,6 +149,9 @@ memo.tools.expToStr = (node, isHtml) => {
             }
             let retval = `${lt}${node.exp.map((elem) => memo.tools.expToStr(elem, isHtml)).join(", ")}${gt}`;
             return retval;
+        case "Range":
+            // only if NOT currState
+            return `from ${memo.tools.expToStr(node.start, isHtml)} to ${memo.tools.expToStr(node.end, isHtml)}`;
         case "Lambda":
         default:
             return "";

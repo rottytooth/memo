@@ -22,4 +22,4 @@ PEG is optimized for PeggyJs.
 
 * Clone the <a href="https://github.com/rottytooth/esonatlangtools">esonatlangtools</a> to the `packages/esonatlangtools` folder.
 * Run `npm install`
-* If you're working on the web interface download the [Hack font](https://www.dafont.com/hack.font) to `/web/fonts`.
+* For the web interface, download the [Hack font](https://www.dafont.com/hack.font) to `/web/fonts`.

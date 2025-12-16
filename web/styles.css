@@ -40,8 +40,90 @@ a, a:visited {
 a:hover {
     text-decoration: underline;
 }
-#state {
+
+/* View toggle and container styles */
+#state-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 42vw;
+    padding: 1rem;
+    margin-right: 10px;
+    z-index: 100;
+}
+
+.rocker-switch {
+    position: relative;
+    width: 120px;
+    height: 40px;
+    background: #e0e0e0;
+    border-radius: 20px;
+    margin: 0 0 20px auto;
+    cursor: pointer;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 200;
+    user-select: none;
+    opacity: 0.7;
+}
+
+.toggle-knob {
     position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 32px;
+    height: 32px;
+    background: #c33;
+    border-radius: 50%;
+    transition: left 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    cursor: pointer;
+    pointer-events: all;
+}
+
+.toggle-knob.right {
+    left: 84px;
+}
+
+.toggle-label {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: #666;
+    pointer-events: none;
+}
+
+.toggle-label.left {
+    left: 12px;
+}
+
+.toggle-label.right {
+    right: 12px;
+}
+
+.view-panel {
+    display: none;
+}
+
+.view-panel.active {
+    display: block;
+}
+
+#state {
+    z-index: 100;
+}
+
+#canvas-view {
+    text-align: center;
+}
+
+#memo-canvas {
+    margin-top: 10px;
+}
+
+/* Original state styles - consolidated */
+#state, #canvas-view {
+    position: fixed;
     top: 0;
     right: 0;
     width: 42vw;
@@ -50,7 +132,9 @@ a:hover {
     z-index: 100;
 
     border-width: 3px;
-    background-color: #fff;
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.80) 0%,
+        rgba(255, 255, 255, 0.80) 80%,
+        rgba(255, 255, 255, 0) 100%);
     border-image: 
       linear-gradient(
         to bottom, 
@@ -103,7 +187,7 @@ td.right_td {
     line-height: 110%;
     padding-bottom: 20px;
     font-size: 1em;
-    height: 20px;
+   min-height: 20px;
 }
 #fadeout span.response {
     display: inline;
@@ -198,7 +282,7 @@ input:focus, textarea:focus{
 	width: 100%;
 	height: 100%;
 	overflow: auto;
-    /* display: none; */
+	display: none;
 	background-color: rgba(154, 153, 153, 0.1);
 }
 
@@ -211,10 +295,10 @@ input:focus, textarea:focus{
 	padding: 30px;
 	border-radius: 10px;
 	overflow: hidden;
-	text-align: center;
 	box-shadow: 1px 1px 14px 3px rgba(154, 153, 153,0.25);	
     pointer-events: all;
     z-index: 9900;
+    line-height: 150%;
 }
 #modal_content p {
     width: 100%;
@@ -246,4 +330,7 @@ input:focus, textarea:focus{
 #modal code, #modal .inline {
     background-color: #eee;
     padding: 5px;
+}
+#modal_content code {
+    margin-left: 50px;
 }
