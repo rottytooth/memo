@@ -393,7 +393,14 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
             return false;
         }
-        cursorField.value = capitalizeFirstLetter(cursorField.value);
+        
+        // Preserve cursor position when capitalizing
+        const cursorPosition = cursorField.selectionStart;
+        const newValue = capitalizeFirstLetter(cursorField.value);
+        if (newValue !== cursorField.value) {
+            cursorField.value = newValue;
+            cursorField.setSelectionRange(cursorPosition, cursorPosition);
+        }
     });
 });
 

@@ -12,11 +12,29 @@ memo.RuntimeError = class extends Error {
 
 (function(oi) {
 
+    // Deep clone utility with fallback for environments without structuredClone
+    oi.deepClone = function(obj) {
+        if (typeof structuredClone !== 'undefined') {
+            return structuredClone(obj);
+        }
+        // Fallback: JSON-based cloning (works for most cases)
+        return JSON.parse(JSON.stringify(obj));
+    };
+
     oi.getDependencies = function(node) {
         if (!node) return [];
 
         if (node.type === "VariableName") {
             return [node.name["varname"]];
+        }
+        if (node.type === "VariableWithParam") {
+            // Depends on the function being called
+            let deps = [node.name.varname];
+            // Also check if the parameter is a variable reference
+            if (node.param.type === "Variable") {
+                deps.push(node.param.varname);
+            }
+            return deps;
         }
         if (node.left && node.right) {
             return oi.getDependencies(node.left).concat(oi.getDependencies(node.right));
@@ -79,7 +97,7 @@ memo.RuntimeError = class extends Error {
     oi.evalExp = function(node, params, currState = false) {
         // When currState is true, work on a copy to avoid mutating stored variables
         if (currState && node && typeof node === 'object') {
-            node = structuredClone(node);
+            node = oi.deepClone(node);
         }
         
         if (node.left) 
@@ -126,9 +144,10 @@ memo.RuntimeError = class extends Error {
                         for (let i = node.start.value; i <= node.end.value; i += 1) {
                             retval.exp.push(oi.evalExp({type: "IntLiteral", value: i}, params, currState));
                         }
-                    }
-                    for (let i = node.start.value; i >= node.end.value; i -= 1) {
-                        retval.exp.push(oi.evalExp({type: "IntLiteral", value: i}, params, currState));
+                    } else {
+                        for (let i = node.start.value; i >= node.end.value; i -= 1) {
+                            retval.exp.push(oi.evalExp({type: "IntLiteral", value: i}, params, currState));
+                        }
                     }
                     return retval;
                 }
@@ -152,7 +171,51 @@ memo.RuntimeError = class extends Error {
                 }
                 throw new memo.RuntimeError(`I don't remember ${node.name.varname}.`, node.name.varname);
             case "VariableWithParam":
-                throw new memo.RuntimeError(`I don't know how to handle parameters yet.`, node.name.varname);
+                // When currState is false and the function doesn't exist yet,
+                // just return the node without evaluation (for function definitions)
+                if (!currState && !(node.name.varname in memo.varlist)) {
+                    return node;
+                }
+                
+                // Look up the variable (function) definition
+                if (!(node.name.varname in memo.varlist)) {
+                    throw new memo.RuntimeError(`I don't remember ${node.name.varname}.`, node.name.varname);
+                }
+                
+                const funcDef = memo.varlist[node.name.varname];
+                
+                // Check if the function has parameters defined
+                if (!funcDef.params || funcDef.params.length === 0) {
+                    throw new memo.RuntimeError(`${node.name.varname} doesn't accept parameters.`, node.name.varname);
+                }
+                
+                // Evaluate the parameter value (could be a literal or variable reference)
+                let paramValue;
+                if (node.param.type === "Variable") {
+                    // It's an Identifier (variable reference)
+                    paramValue = oi.evalExp({type: "VariableName", name: node.param}, params, true);
+                } else {
+                    // It's a Literal
+                    paramValue = oi.evalExp(node.param, params, true);
+                }
+                
+                // Create a parameter binding for evaluation
+                const funcParams = [{
+                    varname: funcDef.params[0].varname,
+                    value: paramValue
+                }];
+                
+                // Evaluate the function body with the parameter binding
+                // Always evaluate to get the value, then preserve structure if currState=false
+                const result = oi.evalExp(funcDef, funcParams, true);
+                
+                if (currState) {
+                    return result;
+                } else {
+                    // Keep the VariableWithParam structure but add the computed value
+                    node.value = result.value !== undefined ? result.value : result;
+                    return node;
+                }
             default:
                 throw new memo.RuntimeError("I don't know how to evaluate that.", node.type);
         }
@@ -267,6 +330,9 @@ memo.RuntimeError = class extends Error {
         ast.varname = varname;
         if ("exp" in ast) {
             ast.deps = oi.getDependencies(ast.exp);
+        } else {
+            // For nodes without exp field (like VariableWithParam), get dependencies directly
+            ast.deps = oi.getDependencies(ast);
         }
 
         // Check for circular dependencies

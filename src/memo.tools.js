@@ -152,6 +152,18 @@ memo.tools.expToStr = (node, isHtml) => {
         case "Range":
             // only if NOT currState
             return `from ${memo.tools.expToStr(node.start, isHtml)} to ${memo.tools.expToStr(node.end, isHtml)}`;
+        case "VariableWithParam":
+            let paramStr = "";
+            if (node.param.type === "Variable") {
+                paramStr = node.param.varname;
+            } else {
+                paramStr = memo.tools.expToStr(node.param, isHtml);
+            }
+            let funcName = node.name.varname;
+            if (isHtml) {
+                funcName = `<span class="vrbl">${funcName}</span>`;
+            }
+            return `${funcName} with ${paramStr}`;
         case "Lambda":
         default:
             return "";

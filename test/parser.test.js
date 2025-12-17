@@ -71,6 +71,101 @@ describe('Memo Parser Tests', () => {
             expect(memo.varlist['x'].params.length).toBe(1);
             expect(memo.varlist['x'].params[0].varname).toBe('p');
         });
+
+        test('Pass literal as parameter: ffun with two', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a function that takes a parameter
+            const defineResult = memo.interpreter.parse('Remember ffun with x as x plus five.');
+            expect(defineResult).toContain('I will remember');
+            expect(memo.varlist['ffun']).toBeDefined();
+            expect(memo.varlist['ffun'].params.length).toBe(1);
+            
+            // Call the function with a literal value "two"
+            const callResult = memo.interpreter.parse('Remember gfun as ffun with two.');
+            expect(callResult).toContain('I will remember');
+            expect(memo.varlist['gfun']).toBeDefined();
+            
+            // Verify the result is 2 + 5 = 7
+            expect(memo.varlist['gfun'].value).toBe(7);
+        });
+
+        test('Pass literal as parameter: ffun with ten', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a function
+            const defineResult = memo.interpreter.parse('Remember addthree with n as n plus three.');
+            expect(defineResult).toContain('I will remember');
+            
+            // Call with literal "ten"
+            const callResult = memo.interpreter.parse('Remember result as addthree with ten.');
+            expect(callResult).toContain('I will remember');
+            expect(memo.varlist['result'].value).toBe(13);
+        });
+
+        test('Function call displays correctly and tracks dependencies', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a function a with parameter n
+            const defineA = memo.interpreter.parse('Remember a with n as n plus three.');
+            expect(defineA).toContain('I will remember');
+            expect(memo.varlist['a']).toBeDefined();
+            
+            // Call a with literal "four" and store in c
+            const defineC = memo.interpreter.parse('Remember c as a with four.');
+            expect(defineC).toContain('I will remember');
+            expect(defineC).toContain('a with four'); // Should display the expression
+            expect(memo.varlist['c']).toBeDefined();
+            expect(memo.varlist['c'].value).toBe(7); // 4 + 3 = 7
+            
+            // Check that c depends on a
+            expect(memo.varlist['c'].deps).toBeDefined();
+            expect(memo.varlist['c'].deps).toContain('a');
+        });
+
+        test('Function call with variable parameter tracks both dependencies', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a variable x
+            memo.interpreter.parse('Remember x as five.');
+            expect(memo.varlist['x'].value).toBe(5);
+            
+            // Define a function that takes a parameter
+            memo.interpreter.parse('Remember double with n as n times two.');
+            expect(memo.varlist['double']).toBeDefined();
+            
+            // Call the function with variable x
+            const result = memo.interpreter.parse('Remember y as double with x.');
+            expect(result).toContain('I will remember');
+            expect(result).toContain('double with x');
+            expect(memo.varlist['y'].value).toBe(10); // 5 * 2
+            
+            // Check that y depends on both 'double' and 'x'
+            expect(memo.varlist['y'].deps).toBeDefined();
+            expect(memo.varlist['y'].deps).toContain('double');
+            expect(memo.varlist['y'].deps).toContain('x');
+        });
+
+        test('Pass range as parameter', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a function that takes a parameter and returns its length
+            // In this case, we'll just return the parameter itself (a range object)
+            memo.interpreter.parse('Remember myfunc with r as r.');
+            expect(memo.varlist['myfunc']).toBeDefined();
+            
+            // Call the function with a range
+            const result = memo.interpreter.parse('Remember myrange as myfunc with the range from one to ten.');
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['myrange']).toBeDefined();
+            
+            // The result should be a List (ranges are evaluated to lists)
+            expect(memo.varlist['myrange'].value).toBeDefined();
+            expect(memo.varlist['myrange'].value.type).toBe('List');
+            expect(memo.varlist['myrange'].value.exp).toHaveLength(10);
+            expect(memo.varlist['myrange'].value.exp[0].value).toBe(1);
+            expect(memo.varlist['myrange'].value.exp[9].value).toBe(10);
+        });
     });
 
     describe('Arithmetic Expression - Resolved', () => {
