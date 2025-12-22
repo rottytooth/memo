@@ -171,6 +171,9 @@ a:hover {
 #state_table .vrbl {
     color: #a00;
 }
+#modal_content .vrbl {
+    color: #a00;
+}
 td {
     vertical-align: top;
     padding-right: 10px;
@@ -312,12 +315,14 @@ input:focus, textarea:focus{
 #modal_content {
 	width: 55%;
     max-width: 700px;
+    max-height: calc(100vh - 100px);
     background-color: var(--panel-back);
     color: var(--main-txt-color);
 	margin: auto;
 	padding: 50px 60px;
 	border-radius: 10px;
-	overflow: hidden;
+	overflow-y: auto;
+	overflow-x: hidden;
 	box-shadow: 1px 1px 14px 3px rgba(154, 153, 153,0.25);	
     pointer-events: all;
     z-index: 9900;

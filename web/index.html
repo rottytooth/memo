@@ -35,9 +35,13 @@
     function close_modal(e) {
        var modal = document.getElementById("modal");
        var modal_content = document.getElementById("modal");
+       // Only refocus if modal was actually open
+       var wasOpen = modal.style.display !== "none";
        modal.style.display = "none";
        modal_content.style.display = "none";
-       document.getElementById("n").focus();
+       if (wasOpen) {
+           document.getElementById("n").focus();
+       }
     }
 
     function close_modal_and_remember(e) {
@@ -82,7 +86,9 @@
         }
         
         document.getElementsByTagName("body")[0].onclick = close_modal_and_remember;
-        document.getElementById("modal").onclick = () => {return true;};
+        document.getElementById("modal_content").onclick = (e) => {
+            e.stopPropagation();
+        };
         document.getElementById("close").onclick = close_modal_and_remember;
     });
     </script>
@@ -124,18 +130,19 @@
         <div id="filler"></div>
     </div>
     <div id="modal"><div id="modal_content"><span class="close" id='close'>&times;</span>
-        <p><span class="memo">[]memo</span> is a programming language for stream-of-conscious coding. Your program picks up where you left off, always becoming something new. <span class="memo">[]memo</span> is a LISP without parentheses. Instead of writing:</p>
+        <p><span class="memo">[]memo</span> is a  stream-of-conscious coding environment. You have one program, always becoming something new. Each time you return, it picks up where you left off. As lines of code scroll off the screen, they are forgotten.
+        </p><p>    
+            <span class="memo">[]memo</span> uses natural language programming. 
+            Instead of writing:</p>
         <code>(defun function-name (arguments...) (body))</code>
         <p>We define functions this way:</p>
-        <code>Remember function-name with arguments as body.</code>
-        <p>Lists are seperated by commas, <span class="inline">and</span>s or both:</p>
-        <code>Remember p as one, two, and three.</code>
-        <p>To evaluate the program, ask for me to tell you about <span class="inline">name</span>:</p>
-        <code>Tell me about name.</code>
-        <p>I read only what is on the screen; code flows off the terminal into oblivion. Like parantheses, I ignore numerals like <span class="inline">4</span> and expect <span class="inline">four</span> instead.</p>
-        <p>Cookies are used only to store program state.</p>
-
-        <p>Read more on <a href="https://github.com/rottytooth/memo">GitHub...</a></p>
+        <code>Remember <span class="vrbl">function-name</span> with <span class="vrbl">arguments</span> as body.</code>
+        <p>List elements are seperated by commas, <span class="inline">and</span>s or both. <span class="memo">[]memo</span> ignores numerals like <span class="inline">4</span> and expects <span class="inline">four</span> instead:</p>
+        <code>Remember <span class="vrbl">p</span> as one, two, and three.</code>
+        <p>Print with the <span class="inline">Tell me</span> command:</p>
+        <code>Tell me about <span class="vrbl">name.</span></code>
+        <p>Some values are approximated.
+        Cookies are used only to store program state. Read more on <a href="https://github.com/rottytooth/memo">GitHub...</a></p>
             
         <p>This language is part of <a href="https://mitpress.mit.edu/9780262553087/forty-four-esolangs/">Forty-Four Esolangs</a>, a book by <a href="https://danieltemkin.com/Esolangs">Daniel Temkin</a>.</p>
     </div>

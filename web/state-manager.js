@@ -17,6 +17,7 @@ const MemoStateManager = {
         const state = {
             varlist: varlist,
             screenHistory: screenHistory,
+            moreText: memo.moreText || "",
             timestamp: new Date().toISOString()
         };
 
@@ -97,6 +98,11 @@ const MemoStateManager = {
     restoreInterpreterState: function(memo, savedState) {
         if (savedState && savedState.varlist) {
             memo.varlist = savedState.varlist;
+        }
+        if (savedState && savedState.moreText) {
+            memo.moreText = savedState.moreText;
+        } else {
+            memo.moreText = "";
         }
     },
 

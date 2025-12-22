@@ -17,9 +17,10 @@ Command = c:(Clear / Print / Let / Reset) ("."?/"!"?) _* {
 	return c;
 }
 
-Clear = (("C"/"c")"lear" / ("F"/"f")"orget") {
+Clear = (("C"/"c")"lear" / ("F"/"f")"orget") _ v:Identifier {
 	return {
-    	cmd: "clear"
+    	cmd: "clear",
+        varname: v.varname
     };
 }
 
@@ -69,13 +70,13 @@ Print = ("T"/"t")"ell me" (_ "about")? _ exp:Expression {
 Identifier = v:NumberLiteral {
 	throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", {"name": v["value"]});
 }
-/ v:("remember"/"million"/"thousand"/"hundred"/"billion") // add other reserved words here
+/ v:("remember"/"million"/"thousand"/"hundred"/"billion"/"negative") // add other reserved words here
 {
   throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", v)
 } / v:([a-zA-ZäöüßÄÖÜ_]([a-z0-9A-ZäöüßÄÖÜ_])*) {
 	return {
         type: "Variable",
-        varname: flattenToString(v)
+        varname: flattenToString(v).toLowerCase()
     };
 }
 

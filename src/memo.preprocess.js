@@ -9,16 +9,16 @@ memo.preprocess = function(input) {
     // Normalize whitespace
     processed = processed.replace(/\s+/g, ' ').trim();
 
-    // Handle clear/reset variants -> "clear"
-    processed = processed.replace(/\bforget\s+all\b/gi, 'clear');
-    processed = processed.replace(/\breset\b/gi, 'clear');
+    // Handle forget/clear variants - both now require a variable name
+    // "forget x" -> "clear x"
     processed = processed.replace(/\bforget\b/gi, 'clear');
 
     // Handle "x is value" assignment syntax -> "remember x as value"
     // Match: identifier followed by "is" followed by value/expression
     // But not when "is" is part of "what is" or comparison operators
+    // And not when "is" appears after "if", "then", or "else" (inside conditionals)
     processed = processed.replace(
-        /\b(?!what\s+)([a-zA-Z_][a-zA-Z0-9_]*)\s+is\s+(?!equal|greater|less|than)(.+)/gi,
+        /\b(?!what\s+)(?<!if\s)(?<!then\s)(?<!else\s)([a-zA-Z_][a-zA-Z0-9_]*)\s+is\s+(?!equal|greater|less|than|not|more|fewer|the\s+same|different)(.+)/gi,
         'remember $1 as $2'
     );
 
@@ -96,7 +96,6 @@ memo.preprocess = function(input) {
         'given': 'with',
         'of': 'with',
         'applied to': 'with',
-        'for': 'with',
         'on': 'with',
     };
 
@@ -110,12 +109,25 @@ memo.preprocess = function(input) {
         processed = processed.replace(regex, `$1 ${canonical} $2`);
     }
 
+    // Special handling for "for" - only convert to "with" when NOT followed by "in"
+    // This preserves "for x in range" for for-loops while converting "Next for x" to "Next with x"
+    // Also preserve "as for x in" pattern (for loop definitions)
+    processed = processed.replace(
+        /\b(?!as\s)([a-zA-Z_][a-zA-Z0-9_]*)\s+for\s+([a-zA-Z_][a-zA-Z0-9_]*)(?!\s+(?:in|as))/gi,
+        '$1 with $2'
+    );
+
     // Function-call style notation: identifier(param) -> identifier with param
     // Only in expression context (not in definitions)
     processed = processed.replace(
         /\b([a-zA-Z_][a-zA-Z0-9_]*)\(([a-zA-Z_][a-zA-Z0-9_]*)\)(?!\s+as)/g,
         '$1 with $2'
     );
+
+    // Convert commas before "else" or "else if" to semicolons
+    // This allows natural comma usage while avoiding list ambiguity in the parser
+    processed = processed.replace(/,(\s+else\s+if\b)/gi, ';$1');
+    processed = processed.replace(/,(\s+else\b)/gi, ';$1');
 
     // Operator synonyms
     // Handle "subtracted from" which flips operand order
@@ -135,7 +147,6 @@ memo.preprocess = function(input) {
         'subtract': 'minus',
         // 'subtracted from' is handled above with operand flipping
         'subtracting': 'minus',
-        'less': 'minus',
         'take away': 'minus',
         
         // Multiplication
@@ -161,24 +172,6 @@ memo.preprocess = function(input) {
         processed = processed.replace(regex, canonical);
     }
 
-    // Comparison operator variations
-    const comparisonSynonyms = {
-        'equals': 'is equal to',
-        'equal to': 'is equal to',
-        
-        'not equal to': 'is not equal to',
-        'doesn\'t equal': 'is not equal to',
-        'does not equal': 'is not equal to',
-        
-        'greater than': 'is greater than',
-        'less than': 'is less than',
-    };
-
-    for (const [variant, canonical] of Object.entries(comparisonSynonyms)) {
-        const regex = new RegExp(`\\b${variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-        processed = processed.replace(regex, canonical);
-    }
-
     // Handle "to be" constructions -> "as" (only in definition context)
     processed = processed.replace(/\b(remember|understand|recognize)\b([^.!]*?)\bto be\b/gi, '$1$2as');
     
@@ -192,6 +185,9 @@ memo.preprocess = function(input) {
         const regex = new RegExp(`\\b${filler}\\b`, 'gi');
         processed = processed.replace(regex, '');
     }
+
+    // Replace "by" with "step" in for-loop context
+    processed = processed.replace(/\b(for\s+\w+\s+in\s+[^,]+)\s+by\s+/gi, '$1 step ');
 
     // Normalize multiple spaces back to single space
     processed = processed.replace(/\s+/g, ' ').trim();

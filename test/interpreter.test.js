@@ -1,0 +1,1132 @@
+/**
+ * Memo Interpreter Tests
+ * Tests for interpreter evaluation and execution
+ */
+
+// Load the memo files
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+// Create a sandbox with necessary globals
+const sandbox = {
+    memo: {},
+    console: console,
+    Error: Error,
+    Array: Array,
+    Object: Object,
+    String: String,
+    Number: Number,
+    Math: Math,
+    parseInt: parseInt,
+    parseFloat: parseFloat,
+    isNaN: isNaN,
+    DEBUG: false  // Add DEBUG flag
+};
+
+// Make the sandbox's 'this' point to itself
+sandbox.window = sandbox;
+sandbox.global = sandbox;
+
+// Load source files in the order they're combined by Grunt
+const sourceFiles = [
+    path.join(__dirname, '../src/memo.js'),
+    path.join(__dirname, '../src/memo.tools.js'),
+    path.join(__dirname, '../src/memo.preprocess.js'),
+    path.join(__dirname, '../build/memo.parser.js'),
+    path.join(__dirname, '../src/memo.interpreter.js')
+];
+
+// Create and run in context
+vm.createContext(sandbox);
+
+// Load each source file in order with proper filename for debugging
+sourceFiles.forEach(filePath => {
+    const code = fs.readFileSync(filePath, 'utf8');
+    vm.runInContext(code, sandbox, {
+        filename: filePath,
+        displayErrors: true
+    });
+});
+
+// Extract memo to global for tests
+global.memo = sandbox.memo;
+
+describe('Memo Interpreter Tests', () => {
+    
+    beforeEach(() => {
+        // Reset varlist before each test
+        memo.varlist = {};
+    });
+
+    describe('Variable Assignment with Parameters', () => {
+        test('Downstream variables update when dependencies change', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define x as one
+            memo.interpreter.parse('Remember x as one.');
+            expect(memo.varlist['x'].value).toBe(1);
+            
+            // Define y as x plus one
+            memo.interpreter.parse('Remember y as x plus one.');
+            
+            // Check y's initial value - should be 2 (1 + 1)
+            let output = memo.interpreter.parse('Tell me about y.');
+            expect(output).toBe('two');
+            
+            // Redefine x as two
+            memo.interpreter.parse('Remember x as two.');
+            expect(memo.varlist['x'].value).toBe(2);
+            
+            // Check that y has been updated to 3 (2 + 1)
+            output = memo.interpreter.parse('Tell me about y.');
+            expect(output).toBe('three');
+        });
+
+        test('Remember x with p as y with g', () => {
+            const input = 'Remember x with p as y with g.';
+
+            memo.interpreter.parse("Remember y with m as m plus two.");
+            memo.interpreter.parse("Remember g as five.");
+
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['x']).toBeDefined();
+            expect(memo.varlist['x'].params).toBeDefined();
+            expect(memo.varlist['x'].params.length).toBe(1);
+            expect(memo.varlist['x'].params[0].varname).toBe('p');
+        });
+
+        test('Pass literal as parameter: ffun with two', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a function that takes a parameter
+            const defineResult = memo.interpreter.parse('Remember ffun with x as x plus five.');
+            expect(defineResult).toContain('I will remember');
+            expect(memo.varlist['ffun']).toBeDefined();
+            expect(memo.varlist['ffun'].params.length).toBe(1);
+            
+            // Call the function with a literal value "two"
+            const callResult = memo.interpreter.parse('Remember gfun as ffun with two.');
+            expect(callResult).toContain('I will remember');
+            expect(memo.varlist['gfun']).toBeDefined();
+            
+            // Verify the result is 2 + 5 = 7
+            expect(memo.varlist['gfun'].value).toBe(7);
+        });
+
+        test('Pass literal as parameter: ffun with ten', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a function
+            const defineResult = memo.interpreter.parse('Remember addthree with n as n plus three.');
+            expect(defineResult).toContain('I will remember');
+            
+            // Call with literal "ten"
+            const callResult = memo.interpreter.parse('Remember result as addthree with ten.');
+            expect(callResult).toContain('I will remember');
+            expect(memo.varlist['result'].value).toBe(13);
+        });
+
+        test('Function call displays correctly and tracks dependencies', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a function a with parameter n
+            const defineA = memo.interpreter.parse('Remember a with n as n plus three.');
+            expect(defineA).toContain('I will remember');
+            expect(memo.varlist['a']).toBeDefined();
+            
+            // Call a with literal "four" and store in c
+            const defineC = memo.interpreter.parse('Remember c as a with four.');
+            expect(defineC).toContain('I will remember');
+            expect(defineC).toContain('a with four'); // Should display the expression
+            expect(memo.varlist['c']).toBeDefined();
+            expect(memo.varlist['c'].value).toBe(7); // 4 + 3 = 7
+            
+            // Check that c depends on a
+            expect(memo.varlist['c'].deps).toBeDefined();
+            expect(memo.varlist['c'].deps).toContain('a');
+        });
+
+        test('Function call with variable parameter tracks both dependencies', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a variable x
+            memo.interpreter.parse('Remember x as five.');
+            expect(memo.varlist['x'].value).toBe(5);
+            
+            // Define a function that takes a parameter
+            memo.interpreter.parse('Remember double with n as n times two.');
+            expect(memo.varlist['double']).toBeDefined();
+            
+            // Call the function with variable x
+            const result = memo.interpreter.parse('Remember y as double with x.');
+            expect(result).toContain('I will remember');
+            expect(result).toContain('double with x');
+            expect(memo.varlist['y'].value).toBe(10); // 5 * 2
+            
+            // Check that y depends on both 'double' and 'x'
+            expect(memo.varlist['y'].deps).toBeDefined();
+            expect(memo.varlist['y'].deps).toContain('double');
+            expect(memo.varlist['y'].deps).toContain('x');
+        });
+
+        test('Pass range as parameter', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a function that takes a parameter and returns its length
+            // In this case, we'll just return the parameter itself (a range object)
+            memo.interpreter.parse('Remember myfunc with r as r.');
+            expect(memo.varlist['myfunc']).toBeDefined();
+            
+            // Call the function with a range
+            const result = memo.interpreter.parse('Remember myrange as myfunc with the range from one to ten.');
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['myrange']).toBeDefined();
+            
+            // The result should be a List (ranges are evaluated to lists)
+            expect(memo.varlist['myrange'].value).toBeDefined();
+            expect(memo.varlist['myrange'].value.type).toBe('List');
+            expect(memo.varlist['myrange'].value.exp).toHaveLength(10);
+            expect(memo.varlist['myrange'].value.exp[0].value).toBe(1);
+            expect(memo.varlist['myrange'].value.exp[9].value).toBe(10);
+        });
+    });
+
+    describe('Arithmetic Expression - Resolved', () => {
+        test('Remember test as thirty times twenty-five divided by seventeen', () => {
+            const input = 'Remember test as thirty times twenty-five divided by seventeen.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['test']).toBeDefined();
+            // for an expression the interpreter can resolve, it resolves to a literal
+            expect(memo.varlist['test'].type).toBe('FloatLiteral');
+            
+            // The expression should be: (30 * 25) / 17
+            expect(memo.varlist['test'].value).toBeCloseTo(44.117, 2);
+        });
+
+        test('Remember another with p as p times twenty plus two', () => {
+            const input = 'Remember another with p as p times twenty plus two.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['another']).toBeDefined();
+            expect(memo.varlist['another'].params).toBeDefined();
+            expect(memo.varlist['another'].params.length).toBe(1);
+            expect(memo.varlist['another'].params[0].varname).toBe('p');
+        });
+
+        test('Remember z with a and b as a plus b plus seven divided by one hundred and fourteen', () => {
+            const input = 'Remember z with a and b as a plus b plus seven divided by one hundred and fourteen.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['z']).toBeDefined();
+            expect(memo.varlist['z'].params).toBeDefined();
+            expect(memo.varlist['z'].params.length).toBe(2);
+            expect(memo.varlist['z'].params[0].varname).toBe('a');
+            expect(memo.varlist['z'].params[1].varname).toBe('b');
+        });
+    });
+
+    describe('Range Expressions', () => {
+        test('Remember g as the range from zero to a million', () => {
+            const input = 'Remember g as the range from zero to a million.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['g']).toBeDefined();
+            expect(memo.varlist['g'].type).toBe('Range');
+            expect(memo.varlist['g'].start.value).toBe(0);
+            expect(memo.varlist['g'].end.value).toBe(1000000);
+        });
+
+            test('Remember countdown as the range from eleven to one', () => {
+            const input = 'Remember countdown as the range from eleven to one.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['countdown']).toBeDefined();
+            expect(memo.varlist['countdown'].type).toBe('Range');
+            expect(memo.varlist['countdown'].start.value).toBe(11);
+            expect(memo.varlist['countdown'].end.value).toBe(1);
+        });
+
+        test('Remember countdown as the range from ten to one', () => {
+            const input = 'Remember countdown as the range from ten to one.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['countdown']).toBeDefined();
+            expect(memo.varlist['countdown'].type).toBe('Range');
+            expect(memo.varlist['countdown'].start.value).toBe(10);
+            expect(memo.varlist['countdown'].end.value).toBe(1);
+        });
+    });
+
+    describe('Number Parsing', () => {
+        test('Parse simple numbers', () => {
+            const input = 'Remember num as forty-two.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['num']).toBeDefined();
+            expect(memo.varlist['num'].value).toBe(42);
+        });
+
+        test('Parse large numbers', () => {
+            const input = 'Remember big as one thousand two hundred thirty-four.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['big']).toBeDefined();
+            expect(memo.varlist['big'].value).toBe(1234);
+        });
+
+        test('Parse millions', () => {
+            const input = 'Remember huge as five million.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['huge']).toBeDefined();
+            expect(memo.varlist['huge'].value).toBe(5000000);
+        });
+    });
+
+    describe('Error Handling', () => {
+        test('Handle unknown variables', () => {
+            const input = 'Print unknown.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result.includes("don't remember") || result.includes("didn't understand")).toBe(true);
+        });
+
+        test('Handle syntax errors', () => {
+            const input = 'Remember x as';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain("didn't understand");
+        });
+
+        test('Handle reserved word conflicts', () => {
+            const input = 'Remember five as ten.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain("remember");
+            expect(result).toContain("differently");
+        });
+    });
+
+    describe('Forgotten Variable Dependencies', () => {
+        test('Dependent variable resolves when dependency is forgotten', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a as one
+            memo.interpreter.parse('Remember a as one.');
+            expect(memo.varlist['a'].value).toBe(1);
+            
+            // Define b as a plus one (b depends on a)
+            memo.interpreter.parse('Remember b as a plus one.');
+            
+            // Check b's value while a still exists - should be 2
+            let output = memo.interpreter.parse('Tell me about b.');
+            expect(output).toBe('two');
+            
+            // Simulate 12 unrelated commands to fade out 'a'
+            for (let i = 0; i < 12; i++) {
+                memo.interpreter.parse(`Remember temp${i} as ${i}.`);
+            }
+            expect(memo.varlist['a']).toBeUndefined();
+            // b should now store the resolved value of 2
+            expect(memo.varlist['b']).toBeDefined();
+            output = memo.interpreter.parse('Tell me about b.');
+            expect(output).toBe('two');
+        });
+
+        test('Chained dependencies resolve when intermediate variable is forgotten', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a as five
+            memo.interpreter.parse('Remember a as five.');
+            
+            // Define b as a plus two (b depends on a)
+            memo.interpreter.parse('Remember b as a plus two.');
+            
+            // Define c as b times three (c depends on b, which depends on a)
+            memo.interpreter.parse('Remember c as b times three.');
+            
+            // Check values before forgetting
+            let outputB = memo.interpreter.parse('Tell me about b.');
+            expect(outputB).toBe('seven'); // 5 + 2 = 7
+            
+            let outputC = memo.interpreter.parse('Tell me about c.');
+            expect(["twenty-one", "twenty one"]).toContain(outputC); // 7 * 3 = 21
+            
+            // Simulate 12 unrelated commands to fade out 'b'
+            for (let i = 0; i < 12; i++) {
+                memo.interpreter.parse(`Remember temp${i} as ${i}.`);
+            }
+            // b should now be a resolved literal, not undefined
+            expect(memo.varlist['b']).toBeDefined();
+            expect(memo.varlist['b'].type).toBe('IntLiteral');
+            // c should still resolve to 21
+            outputC = memo.interpreter.parse('Tell me about c.');
+            expect(outputC).toBe('twenty one');
+        });
+
+        test('Multiple dependent variables resolve when shared dependency is forgotten', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define x as ten
+            memo.interpreter.parse('Remember x as ten.');
+            
+            // Define y as x plus five
+            memo.interpreter.parse('Remember y as x plus five.');
+            
+            // Define z as x times two
+            memo.interpreter.parse('Remember z as x times two.');
+            
+            // Check initial values
+            let outputY = memo.interpreter.parse('Tell me about y.');
+            expect(outputY).toBe('fifteen'); // 10 + 5 = 15
+            
+            let outputZ = memo.interpreter.parse('Tell me about z.');
+            expect(outputZ).toBe('twenty'); // 10 * 2 = 20
+            
+            // Simulate 12 unrelated commands to fade out 'x'
+            for (let i = 0; i < 12; i++) {
+                memo.interpreter.parse(`Remember temp${i} as ${i}.`);
+            }
+            expect(memo.varlist['x']).toBeUndefined();
+            // Both y and z should retain their resolved values
+            outputY = memo.interpreter.parse('Tell me about y.');
+            expect(outputY).toBe('fifteen');
+            outputZ = memo.interpreter.parse('Tell me about z.');
+            expect(outputZ).toBe('twenty');
+        });
+
+        test('Full chain resolves when first variable is forgotten', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Create chain: a -> b -> c
+            memo.interpreter.parse('Remember a as three.');
+            memo.interpreter.parse('Remember b as a plus one.');
+            memo.interpreter.parse('Remember c as b plus one.');
+            
+            // Verify chain before forgetting
+            let output = memo.interpreter.parse('Tell me about c.');
+            expect(output).toBe('five'); // 3 + 1 + 1 = 5
+            
+            // Simulate 12 unrelated commands to fade out 'a'
+            for (let i = 0; i < 12; i++) {
+                memo.interpreter.parse(`Remember temp${i} as ${i}.`);
+            }
+            // b should resolve to 4 and c should resolve to 5
+            let outputB = memo.interpreter.parse('Tell me about b.');
+            expect(outputB).toBe('four');
+            let outputC = memo.interpreter.parse('Tell me about c.');
+            expect(outputC).toBe('five');
+        });
+    });
+
+    describe('Print Command', () => {
+        test('Print a defined variable', () => {
+            memo.interpreter.parse('Remember x as ten.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            
+            expect(result).toContain('ten');
+        });
+
+        test('Print undefined variable', () => {
+            const result = memo.interpreter.parse('Tell me about missing.');
+            
+            expect(result).toContain("don't remember missing");
+        });
+    });
+
+
+    describe('Print with Smart List Stringification', () => {
+        test('Print list without strings shows normal format', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create a list of numbers
+            memo.interpreter.parse('Remember nums as one, two, three.');
+
+            // Print it - should show normal list format
+            const output = memo.interpreter.parse('Tell me about nums.');
+
+            expect(output).toContain('<');
+            expect(output).toContain('>');
+            expect(output).toContain('one');
+            expect(output).toContain('two');
+            expect(output).toContain('three');
+        });
+
+        test('Print list with strings concatenates values', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create a list containing strings
+            memo.interpreter.parse('Remember greeting as "Hello", ", ", "world", "!".');
+
+            // Print it - should concatenate into a string
+            const output = memo.interpreter.parse('Tell me about greeting.');
+
+            expect(output).toBe('Hello, world!');
+            expect(output).not.toContain('<');
+            expect(output).not.toContain('>');
+        });
+
+        test('Print nested list with strings flattens and concatenates', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create nested lists with strings
+            memo.interpreter.parse('Remember part1 as "Hello", ", ".');
+            memo.interpreter.parse('Remember part2 as "World", "!".');
+            memo.interpreter.parse('Remember message as part1, part2.');
+
+            // Print it - should flatten and concatenate
+            const output = memo.interpreter.parse('Tell me about message.');
+
+            expect(output).toBe('Hello, World!');
+        });
+
+        test('Print list mixing strings and numbers concatenates all', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create a list mixing strings and numbers
+            memo.interpreter.parse('Remember mixed as "Count: ", three, " items".');
+
+            // Print it - should concatenate everything with numbers converted to words
+            const output = memo.interpreter.parse('Tell me about mixed.');
+
+            expect(output).toBe('Count: three items');
+        });
+
+        test('Print list with chars concatenates them', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create a list of characters
+            memo.interpreter.parse("Remember word as 'H', 'e', 'l', 'l', 'o'.");
+
+            // Print it - should concatenate into a string
+            const output = memo.interpreter.parse('Tell me about word.');
+
+            expect(output).toBe('Hello');
+        });
+
+        test('Print long stringified list truncates with more', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create a very long string (over 2000 characters)
+            const longString = 'a'.repeat(2500);
+            memo.interpreter.parse(`Remember longtext as "${longString}".`);
+
+            // Print it - should truncate
+            const output = memo.interpreter.parse('Tell me about longtext.');
+
+            expect(output.length).toBeLessThan(2100);
+            expect(output).toContain('...');
+            expect(memo.moreText).toBeDefined();
+            expect(memo.moreText.length).toBeGreaterThan(0);
+
+            // Get more text
+            const moreOutput = memo.interpreter.parse('Tell me more.');
+            expect(moreOutput).toBeTruthy();
+        });
+
+        test('99 bottles with for-loop and functions converts numbers to words', () => {
+            memo.varlist = {}; // Reset state
+
+            // Define the helper functions (using "one" instead of "1" to avoid hardcoded digits)
+            memo.interpreter.parse('Remember Say with n as if n is zero then "No more bottles", else if n is one then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Next with n as if n is one then "no more bottles", else if n is zero then "ninety-nine bottles", else if n is two then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Action with n as if n is zero then "Go to the store and buy some more", else "Take one down and pass it around".');
+
+            // Define the for-loop that generates the song (just first 3 verses to keep test manageable)
+            memo.interpreter.parse('Remember Print99 as for beer in three to one, beer\'s Say, " of beer on the wall, ", beer\'s Say, " of beer.\\n", beer\'s Action, "\\n", beer\'s Next, " of beer on the wall.\\n".');
+
+            // Print it - should have no unquoted digits (numbers converted to words via "as string")
+            const output = memo.interpreter.parse('Tell me about Print99.');
+
+            // Check that output doesn't contain unquoted digits
+            // The "as string" coercion should convert numbers to words
+            expect(output).not.toMatch(/\b\d+\b/); // No standalone digits
+            expect(output).toContain('bottle'); // Should contain bottle references
+            expect(output).toContain('three bottles'); // Verify number-to-word conversion worked
+            expect(output).toContain('two bottles');
+        });
+
+        test('Tell me about Print99. (exact case)', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember Say with n as if n is zero then "No more bottles", else if n is one then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Next with n as if n is one then "no more bottles", else if n is zero then "ninety-nine bottles", else if n is two then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Action with n as if n is zero then "Go to the store and buy some more", else "Take one down and pass it around".');
+            memo.interpreter.parse('Remember Print99 as for beer in three to one, beer\'s Say, " of beer on the wall, ", beer\'s Say, " of beer.\\n", beer\'s Action, "\\n", beer\'s Next, " of beer on the wall.\\n".');
+            const output = memo.interpreter.parse('Tell me about Print99.');
+            expect(typeof output).toBe('string');
+            expect(output.length).toBeGreaterThan(0);
+            expect(output).toContain('bottle'); // Should contain bottle references
+            expect(output).toContain('three bottles'); // Verify number-to-word
+            expect(output).not.toMatch(/I am feeling confused|I am unsure/i);
+        });
+
+        test('Tell me about print99. (lowercase)', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember Say with n as if n is zero then "No more bottles", else if n is one then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Next with n as if n is one then "no more bottles", else if n is zero then "ninety-nine bottles", else if n is two then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Action with n as if n is zero then "Go to the store and buy some more", else "Take one down and pass it around".');
+            memo.interpreter.parse('Remember Print99 as for beer in three to one, beer\'s Say, " of beer on the wall, ", beer\'s Say, " of beer.\\n", beer\'s Action, "\\n", beer\'s Next, " of beer on the wall.\\n".');
+            const output = memo.interpreter.parse('Tell me about print99.');
+            expect(typeof output).toBe('string');
+            expect(output.length).toBeGreaterThan(0);
+            // Accept either a valid output or a specific error message
+            // If error, should be a clear message, not generic confusion
+            expect(output).not.toMatch(/I am feeling confused|I am unsure/i);
+        });
+    });
+
+    describe('Complex Expressions', () => {
+        test('Nested arithmetic operations', () => {
+            const input = 'Remember calc as five plus three times two.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['calc']).toBeDefined();
+        });
+
+        test('Multiple parameters with arithmetic', () => {
+            const input = 'Remember func with x and y as x times y plus ten.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['func']).toBeDefined();
+            expect(memo.varlist['func'].params.length).toBe(2);
+        });
+
+        test('Very large numbers return "a lot"', () => {
+            const input = 'Remember big as one million times one million.';
+            const result = memo.interpreter.parse(input);
+            
+            expect(result).toContain('I will remember');
+            expect(result).toContain('a lot');
+            expect(result).not.toContain('undefined');
+        });
+    });
+
+    describe('Conditionals', () => {
+        beforeEach(() => {
+            memo.varlist = {}; // Reset state before each test
+        });
+
+        test('Simple conditional with else', () => {
+            memo.interpreter.parse('Remember g as five.');
+            memo.interpreter.parse('Remember h as ten.');
+            
+            const result = memo.interpreter.parse('Remember r with n as if n then g else h.');
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['r']).toBeDefined();
+            expect(memo.varlist['r'].params).toEqual([{type: "Variable", varname: "n"}]);
+        });
+
+        test('Conditional with equals comparison', () => {
+            const result = memo.interpreter.parse('Remember r with n as if n equals zero then n plus one.');
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['r']).toBeDefined();
+            expect(memo.varlist['r'].params).toEqual([{type: "Variable", varname: "n"}]);
+        });
+
+        test('Conditional with less than comparison and else', () => {
+            memo.interpreter.parse('Remember g as five.');
+            memo.interpreter.parse('Remember h as ten.');
+            
+            const result = memo.interpreter.parse('Remember r with n as if n is less than five then g else h.');
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['r']).toBeDefined();
+            expect(memo.varlist['r'].params).toEqual([{type: "Variable", varname: "n"}]);
+        });
+
+        test('Simple else if conditional', () => {
+            const result = memo.interpreter.parse('Remember r with n as if n equals zero then zero, else if n equals one then one, else two.');
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['r']).toBeDefined();
+            expect(memo.varlist['r'].params).toEqual([{type: "Variable", varname: "n"}]);
+            
+            // Test evaluation with different values
+            memo.interpreter.parse('Remember test0 as r with zero.');
+            expect(memo.varlist['test0'].value).toBe(0);
+            
+            memo.interpreter.parse('Remember test1 as r with one.');
+            expect(memo.varlist['test1'].value).toBe(1);
+            
+            memo.interpreter.parse('Remember test2 as r with two.');
+            expect(memo.varlist['test2'].value).toBe(2);
+        });
+
+        test('Complex else if with string operations', () => {
+            // Note: Using five/ten instead of zero/one to avoid NumberLiteral reserved word conflicts
+            // Commas before else/else-if are converted to semicolons by the preprocessor
+            const result = memo.interpreter.parse('Remember Stay with n as if n equals five then "No more bottles", else if n equals ten then "1 bottle", else "many bottles".');
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['stay']).toBeDefined();
+            expect(memo.varlist['stay'].params).toEqual([{type: "Variable", varname: "n"}]);
+            
+            // Test with five
+            const result5 = memo.interpreter.parse('Tell me about Stay with five.');
+            expect(result5).toContain('No more bottles');
+            
+            // Test with ten
+            const result10 = memo.interpreter.parse('Tell me about Stay with ten.');
+            expect(result10).toContain('1 bottle');
+            
+            // Test with other number
+            const result3 = memo.interpreter.parse('Tell me about Stay with three.');
+            expect(result3).toContain('many bottles');
+        });
+
+        test('Else if with pure semicolons (no comma conversion)', () => {
+            // Test that semicolons work directly without preprocessor conversion
+            const result = memo.interpreter.parse('Remember Status with n as if n equals zero then zero; else if n equals one then one; else two.');
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['status']).toBeDefined();
+            expect(memo.varlist['status'].params).toEqual([{type: "Variable", varname: "n"}]);
+            
+            // Test evaluation with different values
+            memo.interpreter.parse('Remember s0 as Status with zero.');
+            expect(memo.varlist['s0'].value).toBe(0);
+            
+            memo.interpreter.parse('Remember s1 as Status with one.');
+            expect(memo.varlist['s1'].value).toBe(1);
+            
+            memo.interpreter.parse('Remember s2 as Status with two.');
+            expect(memo.varlist['s2'].value).toBe(2);
+        });
+
+        test('Multiple else-if with "is" comparisons and expressions', () => {
+            // Test complex conditional with bare "is" comparison and string concatenation
+            const result = memo.interpreter.parse('Remember Next with n as if n is one then "no more bottles", else if n is zero then "99 bottles", else if n is two then "1 bottle", else n plus " bottles".');
+            
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['next']).toBeDefined();
+            expect(memo.varlist['next'].params).toEqual([{type: "Variable", varname: "n"}]);
+            
+            // Test with 1
+            const result1 = memo.interpreter.parse('Tell me about Next with one.');
+            expect(result1).toContain('no more bottles');
+            
+            // Test with 0
+            const result0 = memo.interpreter.parse('Tell me about Next with zero.');
+            expect(result0).toContain('99 bottles');
+            
+            // Test with 2
+            const result2 = memo.interpreter.parse('Tell me about Next with two.');
+            expect(result2).toContain('1 bottle');
+            
+            // Test with other number
+            const result5 = memo.interpreter.parse('Tell me about Next with five.');
+            expect(result5).toContain('5 bottles');
+        });
+    });
+
+    describe('ForLoop Evaluation', () => {
+        test('Simple for-loop creates a list with evaluated expressions', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a simple function
+            memo.interpreter.parse('Remember Double with n as n times two.');
+            
+            // Create a for-loop that applies Double to numbers 0-3
+            const assignResult = memo.interpreter.parse('Remember MyList as for i in zero to three, Double with i.');
+            
+            // Check that MyList exists and is properly formed
+            expect(memo.varlist['mylist']).toBeDefined();
+            expect(memo.varlist['mylist'].type).toBe('ForLoop');
+            expect(memo.varlist['mylist'].deps).toContain('double');
+            
+            // Evaluate the list
+            const result = memo.interpreter.parse('Tell me about MyList.');
+            // Should evaluate to [0, 2, 4, 6] which displays as "zero, two, four, six"
+            expect(result).toContain('zero');
+            expect(result).toContain('two');
+            expect(result).toContain('four');
+            expect(result).toContain('six');
+        });
+
+        test('For-loop with multiple expressions creates list of lists', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define helper functions
+            memo.interpreter.parse('Remember Say with n as n plus " bottles".');
+            memo.interpreter.parse('Remember Next with n as n minus one.');
+            memo.interpreter.parse('Remember Action with n as n times two.');
+            
+            // Create a for-loop with multiple expressions
+            memo.interpreter.parse('Remember BottlesArray as for n in zero to two, Say with n, Next with n, Action with n.');
+            
+            // Check dependencies
+            expect(memo.varlist['bottlesarray']).toBeDefined();
+            expect(memo.varlist['bottlesarray'].deps).toContain('say');
+            expect(memo.varlist['bottlesarray'].deps).toContain('next');
+            expect(memo.varlist['bottlesarray'].deps).toContain('action');
+            expect(memo.varlist['bottlesarray'].deps).not.toContain('n'); // Iterator var should not be a dependency
+        });
+
+        test('For-loop updates when dependencies change', () => {
+            memo.varlist = {}; // Reset state
+
+            memo.interpreter.parse('Remember x as two.');
+            
+            // Define a function
+            memo.interpreter.parse('Remember AddX with n as n plus x.');
+            memo.interpreter.parse('Remember x as one.');
+            
+            // Create a for-loop using the function
+            memo.interpreter.parse('Remember results as for i in zero to two, AddX with i.');
+            
+            // Check initial values - should be [1, 2, 3]
+            let output = memo.interpreter.parse('Tell me about results.');
+            expect(output).toContain('one');
+            expect(output).toContain('two');
+            expect(output).toContain('three');
+            
+            // Change x
+            memo.interpreter.parse('Remember x as ten.');
+            
+            // Results should now be [10, 11, 12]
+            output = memo.interpreter.parse('Tell me about Results.');
+            expect(output).toContain('ten');
+            expect(output).toContain('eleven');
+            expect(output).toContain('twelve');
+        });
+    });
+
+    describe('ForLoop with Step', () => {
+        test('For-loop with positive step counts by twos', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Create a for-loop with step 2
+            memo.interpreter.parse('Remember evens as for n in zero to ten step two, n.');
+            
+            // Should get [0, 2, 4, 6, 8, 10]
+            const output = memo.interpreter.parse('Tell me about evens.');
+            expect(output).toContain('zero');
+            expect(output).toContain('two');
+            expect(output).toContain('four');
+            expect(output).toContain('six');
+            expect(output).toContain('eight');
+            expect(output).toContain('ten');
+            
+            // Should not contain odd numbers
+            expect(output).not.toContain('one');
+            expect(output).not.toContain('three');
+            expect(output).not.toContain('five');
+        });
+
+        test('For-loop with "by" synonym for step', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Use "by" instead of "step"
+            memo.interpreter.parse('Remember multiples as for n in zero to twelve by four, n.');
+            
+            // Should get [0, 4, 8, 12]
+            const output = memo.interpreter.parse('Tell me about multiples.');
+            expect(output).toContain('zero');
+            expect(output).not.toContain('one');
+            expect(output).not.toContain('two');
+            expect(output).not.toContain('three');
+            expect(output).toContain('four');
+            expect(output).not.toContain('five');
+            expect(output).not.toContain('six');
+            expect(output).not.toContain('seven');
+            expect(output).toContain('eight');
+            expect(output).not.toContain('nine');
+            expect(output).not.toContain('ten');
+            expect(output).not.toContain('eleven');
+            expect(output).toContain('twelve');
+        });
+
+        test('For-loop with negative step counts down', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a function to use in the loop
+            memo.interpreter.parse('Remember identity with x as x.');
+            
+            // Create a countdown with negative step
+            memo.interpreter.parse('Remember countdown as for n in ten to zero step negative two, identity with n.');
+            
+            // Should get [10, 8, 6, 4, 2, 0]
+            const output = memo.interpreter.parse('Tell me about countdown.');
+            expect(output).toContain('ten');
+            expect(output).not.toContain('nine');
+            expect(output).toContain('eight');
+            expect(output).toContain('six');
+            expect(output).toContain('four');
+            expect(output).toContain('two');
+            expect(output).toContain('zero');
+            
+            // Should not contain odd numbers
+            expect(output).not.toContain('nine');
+            expect(output).not.toContain('seven');
+        });
+
+        test('For-loop with Range and step', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Create a for-loop using Range syntax with step
+            memo.interpreter.parse('Remember values as for n in the range from zero to fifteen step five, n.');
+            
+            // Should get [0, 5, 10, 15]
+            const output = memo.interpreter.parse('Tell me about values.');
+            expect(output).toContain('zero');
+            expect(output).not.toContain('one');
+            expect(output).not.toContain('two');
+            expect(output).toContain('five');
+            expect(output).toContain('ten');
+            expect(output).toContain('fifteen');
+        });
+
+        test('For-loop using range defined in previous variable', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Define a range variable
+            memo.interpreter.parse('Remember myrange as the range from zero to twenty.');
+            
+            // Define step variable
+            memo.interpreter.parse('Remember mystep as five.');
+            
+            // Use the range in a for-loop with step
+            memo.interpreter.parse('Remember fives as for n in myrange step mystep, n.');
+            
+            // Should get [0, 5, 10, 15, 20]
+            const output = memo.interpreter.parse('Tell me about fives.');
+            expect(output).toContain('zero');
+            expect(output).not.toContain('one');
+            expect(output).not.toContain('two');
+            expect(output).toContain('five');
+            expect(output).toContain('ten');
+            expect(output).toContain('fifteen');
+            expect(output).toContain('twenty');
+        });
+
+        test('Error: counting up with negative step', () => {
+            memo.varlist = {}; // Reset state
+            
+            // Try to count up with negative step - should error
+            const output = memo.interpreter.parse('Remember bad as for n in zero to ten step negative one, n.');
+            
+            expect(output).toContain('Step must be positive when counting upward');
+        });
+
+        test('Error: counting down with positive step', () => {
+            memo.varlist = {}; // Reset state
+
+            // Try to count down with positive step - should error
+            const output = memo.interpreter.parse('Remember bad as for n in ten to zero step one, n.');
+
+            expect(output).toContain('Step must be negative when counting downward');
+        });
+    });
+
+    describe('ForLoop with VarWithParam range', () => {
+        test('Parser test for VarWithParam in for loop', () => {
+            memo.varlist = {}; // Reset state
+
+            // Test parsing the for loop with VarWithParam
+            const code = 'Remember Result as for item in five\'s BottleList, item.';
+            const preprocessed = memo.preprocess(code);
+            const parsed = memo.parser.parse(preprocessed);
+
+            // Check structure
+            expect(parsed.cmd).toBe('let');
+            expect(parsed.varname).toBe('result');
+            expect(parsed.exp.type).toBe('ForLoop');
+            expect(parsed.exp.varname).toBe('item');
+            expect(parsed.exp.range.type).toBe('VariableWithParam');
+            expect(parsed.exp.range.name.varname).toBe('bottlelist');
+            expect(parsed.exp.range.param.type).toBe('IntLiteral');
+            expect(parsed.exp.range.param.value).toBe(5);
+        });
+
+        test('For-loop with VarWithParam evaluates correctly', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create a function that returns a list
+            memo.interpreter.parse('Remember BottleList with n as one, two, three.');
+
+            // Use VarWithParam as the range using apostrophe-s syntax
+            const result = memo.interpreter.parse('Remember Result as for item in five\'s BottleList, item.');
+            console.log('Evaluation result:', result);
+            console.log('Result in varlist:', JSON.stringify(memo.varlist['result'], null, 2));
+
+            // Should have created the variable
+            expect(memo.varlist['result']).toBeDefined();
+        });
+    });
+
+    describe('Clear command', () => {
+        test('Clear removes a single variable', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create some variables
+            memo.interpreter.parse('Remember x as five.');
+            memo.interpreter.parse('Remember y as ten.');
+            memo.interpreter.parse('Remember z as fifteen.');
+
+            // Verify they exist
+            expect(memo.varlist['x']).toBeDefined();
+            expect(memo.varlist['y']).toBeDefined();
+            expect(memo.varlist['z']).toBeDefined();
+
+            // Clear one variable
+            const result = memo.interpreter.parse('Clear x.');
+
+            // Check the result message
+            expect(result).toBe('I have forgotten x.');
+
+            // Verify x is gone but y and z remain
+            expect(memo.varlist['x']).toBeUndefined();
+            expect(memo.varlist['y']).toBeDefined();
+            expect(memo.varlist['z']).toBeDefined();
+        });
+
+        test('Clear with forget keyword works', () => {
+            memo.varlist = {}; // Reset state
+
+            memo.interpreter.parse('Remember myvar as twenty.');
+            expect(memo.varlist['myvar']).toBeDefined();
+
+            const result = memo.interpreter.parse('Forget myvar.');
+
+            expect(result).toBe('I have forgotten myvar.');
+            expect(memo.varlist['myvar']).toBeUndefined();
+        });
+
+        test('Clear on non-existent variable returns appropriate message', () => {
+            memo.varlist = {}; // Reset state
+
+            const result = memo.interpreter.parse('Clear nonexistent.');
+
+            expect(result).toBe("I don't remember nonexistent.");
+        });
+
+        test('Clearing a variable resolves dependent variables first', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create dependent variables
+            memo.interpreter.parse('Remember a as five.');
+            memo.interpreter.parse('Remember b as a plus ten.');
+
+            // Verify both exist and b depends on a
+            expect(memo.varlist['a']).toBeDefined();
+            expect(memo.varlist['b']).toBeDefined();
+
+            // Clear the dependency
+            memo.interpreter.parse('Clear a.');
+
+            // a should be gone
+            expect(memo.varlist['a']).toBeUndefined();
+
+            // b should still exist and be resolved to a literal value (15)
+            expect(memo.varlist['b']).toBeDefined();
+            expect(memo.varlist['b'].type).toBe('IntLiteral');
+            expect(memo.varlist['b'].value).toBe(15);
+
+            // b should evaluate correctly even though a is gone
+            const bValue = memo.interpreter.parse('Tell me about b.');
+            expect(bValue).toBe('fifteen');
+        });
+
+        test('Clear handles case-insensitive variable names', () => {
+            memo.varlist = {}; // Reset state
+
+            memo.interpreter.parse('Remember MyVariable as seven.');
+            expect(memo.varlist['myvariable']).toBeDefined(); // Variables are stored lowercase
+
+            const result = memo.interpreter.parse('Clear MyVariable.');
+
+            expect(result).toBe('I have forgotten myvariable.');
+            expect(memo.varlist['myvariable']).toBeUndefined();
+        });
+    });
+
+    describe('Undefined variable detection', () => {
+        test('Assignment with undefined variable returns error', () => {
+            memo.varlist = {}; // Reset state
+
+            // Try to assign x to undefined y
+            const result = memo.interpreter.parse('Remember x as y.');
+            expect(result).toBe("I don't remember y.");
+
+            // x should not have been created
+            expect(memo.varlist['x']).toBeUndefined();
+        });
+
+        test('Assignment with undefined variable in expression returns error', () => {
+            memo.varlist = {}; // Reset state
+
+            memo.interpreter.parse('Remember a as five.');
+
+            // Try to use undefined variable b in expression
+            const result = memo.interpreter.parse('Remember result as a plus b.');
+            expect(result).toBe("I don't remember b.");
+
+            // result should not have been created
+            expect(memo.varlist['result']).toBeUndefined();
+        });
+
+        test('Assignment with all defined variables succeeds', () => {
+            memo.varlist = {}; // Reset state
+
+            memo.interpreter.parse('Remember a as five.');
+            memo.interpreter.parse('Remember b as ten.');
+
+            // This should succeed
+            const result = memo.interpreter.parse('Remember result as a plus b.');
+            expect(result).toContain('I will remember result');
+            expect(memo.varlist['result']).toBeDefined();
+        });
+
+        test('For-loop with undefined range variable returns error', () => {
+            memo.varlist = {}; // Reset state
+
+            // Try to use undefined range in for-loop
+            const result = memo.interpreter.parse('Remember result as for i in myrange, i.');
+            expect(result).toBe("I don't remember myrange.");
+
+            // result should not have been created
+            expect(memo.varlist['result']).toBeUndefined();
+        });
+
+        test('Conditional with undefined variable returns error', () => {
+            memo.varlist = {}; // Reset state
+
+            // Try to use undefined variable in conditional
+            const result = memo.interpreter.parse('Remember result as if x is five then ten else twenty.');
+            expect(result).toBe("I don't remember x.");
+
+            // result should not have been created
+            expect(memo.varlist['result']).toBeUndefined();
+        });
+    });
+
+    describe('Throws error when assigning undefined variable', () => {
+        test('Assignment with undefined variable returns error', () => {
+            memo.varlist = {}; // Reset state
+
+            // Try to assign x to undefined y
+            const result = memo.interpreter.parse('Remember x as y.');
+            expect(result).toMatch(/don\'t remember y|not defined|syntax error/i);
+
+            // x should not have been created
+            expect(memo.varlist['x']).toBeUndefined();
+        });
+    });
+});
