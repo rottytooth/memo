@@ -272,29 +272,29 @@ describe('Memo Preprocessor Tests', () => {
         test('Equals -> Is equal to', () => {
             const input = 'Remember x as five equals three.';
             const result = memo.preprocess(input);
-            expect(result).toContain('is equal to');
-            expect(result).not.toContain('equals');
+            // 'equals' is passed through to the grammar which handles it
+            expect(result).toContain('equals');
         });
 
         test('Greater than -> Is greater than', () => {
             const input = 'Remember x as five greater than three.';
             const result = memo.preprocess(input);
-            expect(result).toContain('is greater than');
+            // 'greater than' is passed through to the grammar
+            expect(result).toContain('greater than');
         });
 
         test('Less than -> Is less than', () => {
             const input = 'Remember x as five less than three.';
             const result = memo.preprocess(input);
-            // 'less' alone is transformed to 'minus' by subtraction synonym
-            expect(result).toContain('minus');
+            // 'less than' is no longer transformed (grammar handles it directly)
+            expect(result).toContain('less than');
         });
 
         test('Not equal to -> Is not equal to', () => {
             const input = 'Remember x as five not equal to three.';
             const result = memo.preprocess(input);
-            // 'equal to' transforms to 'is equal to', then with 'not' becomes complex
-            expect(result).toContain('not');
-            expect(result).toContain('is equal to');
+            // 'not equal to' is passed through to the grammar
+            expect(result).toContain('not equal to');
         });
     });
 
@@ -403,6 +403,29 @@ describe('Memo Preprocessor Tests', () => {
             expect(result).toContain('I will remember');
             expect(memo.varlist['y']).toBeDefined();
             expect(memo.varlist['y'].value).toBe(5); // ten minus five = 5
+        });
+    });
+
+    describe('Conditional Comma Handling', () => {
+        test('Convert comma before "else" to semicolon', () => {
+            const input = 'if n equals zero then zero, else one';
+            const result = memo.preprocess(input);
+            expect(result).toContain('; else one');
+            expect(result).not.toContain(', else one');
+        });
+
+        test('Convert comma before "else if" to semicolon', () => {
+            const input = 'if n equals zero then zero, else if n equals one then one, else two';
+            const result = memo.preprocess(input);
+            expect(result).toContain('; else if');
+            expect(result).toContain('; else two');
+            expect(result).not.toContain(', else');
+        });
+
+        test('Preserve commas not before else/else-if', () => {
+            const input = 'Remember list as one, two, three.';
+            const result = memo.preprocess(input);
+            expect(result).toContain('one, two, three');
         });
     });
 

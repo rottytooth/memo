@@ -4,7 +4,11 @@ memo.tools = {
 }
 
 memo.tools.intToStr = (num) => {
-    // FIXME: what happens over a billion?
+    // Handle very large numbers
+    if (num > 999999999999) {
+        return "a lot";
+    }
+    
     const ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
     const teens = ["", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
     const tens = ["", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
@@ -82,11 +86,53 @@ memo.tools.capitalize = (str) => {
 };
 
 memo.tools.rangeToList = (range) => {
-    let step = 1;
-    if (range.end.value < range.start.value) {
-        step = -1;
+    // Use the step from the range if available, otherwise calculate it
+    let step = range.step ? range.step.value : (range.end.value < range.start.value ? -1 : 1);
+    
+    // Calculate the number of steps needed
+    const diff = range.end.value - range.start.value;
+    const length = Math.floor(Math.abs(diff) / Math.abs(step)) + 1;
+    
+    return { type: "List", exp: Array.from({length: length}, (_, i) => ({type: "IntLiteral", value: range.start.value + i * step})) };
+}
+
+// Check if a node or its children contain any string literals
+memo.tools.containsString = (node) => {
+    if (!node) return false;
+
+    if (node.type === "StringLiteral" || node.type === "CharLiteral") {
+        return true;
     }
-    return { type: "List", exp: Array.from({length: range.end.value - range.start.value + 1}, (_, i) => ({type: "IntLiteral", value: range.start.value + i * step})) };
+
+    if (node.type === "List" && Array.isArray(node.exp)) {
+        return node.exp.some(elem => memo.tools.containsString(elem));
+    }
+
+    return false;
+}
+
+// Stringify list contents by extracting values (for lists containing strings)
+// numbersToWords: if true, convert numbers to words (for print output)
+memo.tools.stringifyList = (node) => {
+    if (!node) return "";
+
+    switch(node.type) {
+            case "IntLiteral":
+                return memo.tools.intToStr(node.value);
+            case "FloatLiteral":
+                return memo.tools.floatToStr(node.value);
+            case "CharLiteral":
+                return node.value;
+            case "StringLiteral":
+                return node.value;
+            case "List":
+                if (Array.isArray(node.exp)) {
+                    return node.exp.map(elem => memo.tools.stringifyList(elem)).join("");
+                }
+                return "";
+            default:
+                return "";
+    }
 }
 
 memo.tools.expToStr = (node, isHtml) => {
@@ -152,7 +198,46 @@ memo.tools.expToStr = (node, isHtml) => {
         case "Range":
             // only if NOT currState
             return `from ${memo.tools.expToStr(node.start, isHtml)} to ${memo.tools.expToStr(node.end, isHtml)}`;
+        case "VariableWithParam":
+            let paramStr = "";
+            if (node.param.type === "Variable") {
+                paramStr = node.param.varname;
+            } else {
+                paramStr = memo.tools.expToStr(node.param, isHtml);
+            }
+            let funcName = node.name.varname;
+            if (isHtml) {
+                funcName = `<span class="vrbl">${funcName}</span>`;
+            }
+            return `${funcName} with ${paramStr}`;
         case "Lambda":
+            return "lambda";
+        case "ForLoop":
+            let rangeStr = "";
+            if (node.range) {
+                if (node.range.type === "Range") {
+                    rangeStr = memo.tools.expToStr(node.range, isHtml);
+                } else if (node.range.type === "VariableName") {
+                    rangeStr = memo.tools.expToStr(node.range, isHtml);
+                } else if (node.range.type === "VariableWithParam") {
+                    rangeStr = memo.tools.expToStr(node.range, isHtml);
+                } else {
+                    // Range with start and end
+                    rangeStr = `${memo.tools.expToStr(node.range.start, isHtml)} to ${memo.tools.expToStr(node.range.end, isHtml)}`;
+                }
+            }
+            let stepStr = "";
+            if (node.rangeStep || (node.range && node.range.step)) {
+                const step = node.rangeStep || node.range.step;
+                // Don't show default step of 1 or -1
+                if (!(step.type === "IntLiteral" && (step.value === 1 || step.value === -1))) {
+                    stepStr = ` step ${memo.tools.expToStr(step, isHtml)}`;
+                }
+            }
+            // Use iteratorVar if available (for stored variables), otherwise varname
+            const iterVarName = node.iteratorVar || node.varname;
+            const iterVar = isHtml ? `<span class="vrbl">${iterVarName}</span>` : iterVarName;
+            return `for ${iterVar} in ${rangeStr}${stepStr}, ${memo.tools.expToStr(node.exp, isHtml)}`;
         default:
             return "";
     }
