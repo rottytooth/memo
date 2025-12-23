@@ -113,25 +113,25 @@ memo.tools.containsString = (node) => {
 
 // Stringify list contents by extracting values (for lists containing strings)
 // numbersToWords: if true, convert numbers to words (for print output)
-memo.tools.stringifyList = (node, numbersToWords = false) => {
+memo.tools.stringifyList = (node) => {
     if (!node) return "";
 
     switch(node.type) {
-        case "IntLiteral":
-            return numbersToWords ? memo.tools.intToStr(node.value) : String(node.value);
-        case "FloatLiteral":
-            return numbersToWords ? memo.tools.floatToStr(node.value) : String(node.value);
-        case "CharLiteral":
-            return node.value;
-        case "StringLiteral":
-            return node.value;
-        case "List":
-            if (Array.isArray(node.exp)) {
-                return node.exp.map(elem => memo.tools.stringifyList(elem, numbersToWords)).join("");
-            }
-            return "";
-        default:
-            return "";
+            case "IntLiteral":
+                return memo.tools.intToStr(node.value);
+            case "FloatLiteral":
+                return memo.tools.floatToStr(node.value);
+            case "CharLiteral":
+                return node.value;
+            case "StringLiteral":
+                return node.value;
+            case "List":
+                if (Array.isArray(node.exp)) {
+                    return node.exp.map(elem => memo.tools.stringifyList(elem)).join("");
+                }
+                return "";
+            default:
+                return "";
     }
 }
 

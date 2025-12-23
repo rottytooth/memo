@@ -127,7 +127,17 @@ memo.RuntimeError = class extends Error {
         // (which are always correct and sensible, as it is JavaScript)
         switch (operator) {
             case "+":
-                return oi.determineType(left.value + right.value);
+                // When combining IntLiteral with StringLiteral/CharLiteral, convert int to words
+                let leftVal = left.value;
+                let rightVal = right.value;
+
+                if (left.type === "IntLiteral" && (right.type === "StringLiteral" || right.type === "CharLiteral")) {
+                    leftVal = memo.tools.stringifyList(left);
+                } else if (right.type === "IntLiteral" && (left.type === "StringLiteral" || left.type === "CharLiteral")) {
+                    rightVal = memo.tools.stringifyList(right);
+                }
+
+                return oi.determineType(leftVal + rightVal);
             case "-":
                 return oi.determineType(left.value - right.value);
             case "*":
@@ -661,13 +671,21 @@ memo.RuntimeError = class extends Error {
                     const listNode = evaluatedExp.type === "Range" ?
                         memo.tools.rangeToList(evaluatedExp) : evaluatedExp;
                     if (memo.tools.containsString(listNode)) {
-                        printOutput = memo.tools.stringifyList(listNode, true);
+                        // If list contains string/char, concatenate, but use digit form for IntLiterals
+                        printOutput = memo.tools.stringifyList(listNode);
                     } else {
-                        printOutput = memo.tools.expToStr(listNode, false);
+                        // Otherwise, print as smart list format <one, two, three>
+                        const items = Array.isArray(listNode.exp) ? listNode.exp.map(elem => memo.tools.stringifyList(elem)) : [];
+                        printOutput = `<${items.join(", ")}>`;
                     }
                 } else if (evaluatedExp.type === "StringLiteral") {
-                    // Output string literals as-is (remove quotes, preserve digits)
+                    // Output string literals as-is
                     printOutput = evaluatedExp.value;
+                } else if (evaluatedExp.type === "IntLiteral") {
+                    // Output digit form for IntLiterals
+                    printOutput = memo.tools.stringifyList(evaluatedExp);
+                } else if (evaluatedExp.type === "FloatLiteral") {
+                    printOutput = memo.tools.floatToStr(evaluatedExp.value);
                 } else {
                     // For all other outputs, remove quotes if present
                     let outputStr = memo.tools.expToStr(evaluatedExp, false);
@@ -676,10 +694,7 @@ memo.RuntimeError = class extends Error {
                     }
                     printOutput = outputStr;
                 }
-                // After all formatting, convert standalone digits to words (unless it's a string literal)
-                if (evaluatedExp.type !== "StringLiteral") {
-                    printOutput = printOutput.replace(/\b\d+\b/g, (match) => memo.tools.intToStr(parseInt(match)));
-                }
+                // Do NOT post-process with regex replace; IntLiterals are handled above, and StringLiterals are left alone
                 memo.moreText = "";
                 if (printOutput.length > 2000) {
                     let truncated = printOutput.substring(0, 2000);

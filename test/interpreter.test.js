@@ -586,6 +586,22 @@ describe('Memo Interpreter Tests', () => {
             // If error, should be a clear message, not generic confusion
             expect(output).not.toMatch(/I am feeling confused|I am unsure/i);
         });
+
+        test('Print: Ints should be spelled out', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember Say with n as if n is zero then "No more bottles", else if n is one then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Next with n as if n is one then "no more bottles", else if n is zero then "ninety-nine bottles", else if n is two then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Action with n as if n is zero then "Go to the store and buy some more", else "Take one down and pass it around".');
+            memo.interpreter.parse('Remember Print99 as for beer in three to one, beer\'s Say, " of beer on the wall, ", beer\'s Say, " of beer.\\n", beer\'s Action, "\\n", beer\'s Next, " of beer on the wall.\\n".');
+            const output = memo.interpreter.parse('Tell me about Print99.');
+            expect(typeof output).toBe('string');
+            expect(output.length).toBeGreaterThan(0);
+            expect(output).toContain('bottle'); // Should contain bottle references
+            expect(output).toContain('three bottles'); // Verify number-to-word
+            expect(output).not.toContain('3'); // Verify number-to-word
+            expect(output).not.toMatch(/I am feeling confused|I am unsure/i);
+        });
+
     });
 
     describe('Complex Expressions', () => {
@@ -712,7 +728,7 @@ describe('Memo Interpreter Tests', () => {
 
         test('Multiple else-if with "is" comparisons and expressions', () => {
             // Test complex conditional with bare "is" comparison and string concatenation
-            const result = memo.interpreter.parse('Remember Next with n as if n is one then "no more bottles", else if n is zero then "99 bottles", else if n is two then "1 bottle", else n plus " bottles".');
+            const result = memo.interpreter.parse('Remember Next with n as if n is one then "no more bottles", else if n is zero then "99 bottles", else if n is two then "one bottle", else n plus " bottles".');
             
             expect(result).toContain('I will remember');
             expect(memo.varlist['next']).toBeDefined();
@@ -728,11 +744,11 @@ describe('Memo Interpreter Tests', () => {
             
             // Test with 2
             const result2 = memo.interpreter.parse('Tell me about Next with two.');
-            expect(result2).toContain('1 bottle');
+            expect(result2).toContain('one bottle');
             
             // Test with other number
             const result5 = memo.interpreter.parse('Tell me about Next with five.');
-            expect(result5).toContain('5 bottles');
+            expect(result5).toContain('five bottles');
         });
     });
 
