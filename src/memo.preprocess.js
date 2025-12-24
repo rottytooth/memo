@@ -189,6 +189,10 @@ memo.preprocess = function(input) {
     // Replace "by" with "step" in for-loop context
     processed = processed.replace(/\b(for\s+\w+\s+in\s+[^,]+)\s+by\s+/gi, '$1 step ');
 
+    // Normalize "one million/thousand/hundred/billion" to "a million/thousand/hundred/billion"
+    // This makes number parsing consistent
+    processed = processed.replace(/\bone\s+(million|thousand|hundred|billion)\b/gi, 'a $1');
+
     // Normalize multiple spaces back to single space
     processed = processed.replace(/\s+/g, ' ').trim();
 

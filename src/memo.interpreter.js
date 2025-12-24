@@ -75,7 +75,7 @@ memo.RuntimeError = class extends Error {
                         deps = deps.concat(oi.getDependencies(node.exp.exp[i]));
                     }
                 } else {
-                    deps = oi.getDependencies(node.exp);
+                    deps = deps.concat(oi.getDependencies(node.exp));
                 }
             }
             // Filter out the iterator variable itself from dependencies
@@ -723,10 +723,21 @@ memo.RuntimeError = class extends Error {
                 resolveDependents(depKey);
                 // Evaluate and store the resolved value (no dependencies)
                 const resolved = oi.evalExp(memo.varlist[depKey], undefined, true);
-                if (resolved && typeof resolved.value !== 'undefined') {
+                if (resolved) {
                     const oldParams = memo.varlist[depKey].params || [];
-                    memo.varlist[depKey] = oi.deepClone(resolved);
-                    // Reset fade to 1 - this is now a fresh literal value
+                    let inlined;
+                    // Preserve the type of the resolved value
+                    if (resolved.type === "IntLiteral" || resolved.type === "FloatLiteral") {
+                        // Keep numeric types as-is
+                        inlined = oi.deepClone(resolved);
+                    } else if (resolved.type === "List" || resolved.type === "StringLiteral" || resolved.type === "CharLiteral") {
+                        // Flatten lists/strings/chars to StringLiteral
+                        inlined = { type: "StringLiteral", value: memo.tools.stringifyList(resolved, true) };
+                    } else {
+                        // Fallback: deep clone for other types
+                        inlined = oi.deepClone(resolved);
+                    }
+                    memo.varlist[depKey] = inlined;
                     memo.varlist[depKey].fade = 1;
                     memo.varlist[depKey].params = oldParams;
                     memo.varlist[depKey].deps = []; // No more dependencies
@@ -851,6 +862,14 @@ memo.RuntimeError = class extends Error {
         }
 
         fadeVars(ast);
+
+        // Add period if response doesn't end with punctuation
+        if (response && typeof response === 'string' && response.length > 0) {
+            const lastChar = response[response.length - 1];
+            if (!/[.!?,;:>]/.test(lastChar)) {
+                response = response.trim() + '.';
+            }
+        }
 
         return response;
     }

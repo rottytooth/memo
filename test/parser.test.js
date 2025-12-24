@@ -165,4 +165,22 @@ describe('Memo Parser Tests', () => {
             expect(parsed.exp.range.end.value).toBe(5);
         });
     });
+
+    describe('Range Parsing', () => {
+        test('Large descending range from a million to one', () => {
+            const code = 'Remember c as from a million to one.';
+            const preprocessed = memo.preprocess(code);
+            const parsed = memo.parser.parse(preprocessed);
+
+            expect(parsed.cmd).toBe('let');
+            expect(parsed.varname).toBe('c');
+            expect(parsed.exp.type).toBe('Range');
+            expect(parsed.exp.start.type).toBe('IntLiteral');
+            expect(parsed.exp.start.value).toBe(1000000);
+            expect(parsed.exp.end.type).toBe('IntLiteral');
+            expect(parsed.exp.end.value).toBe(1);
+            expect(parsed.exp.step.type).toBe('IntLiteral');
+            expect(parsed.exp.step.value).toBe(-1);
+        });
+    });
 });
