@@ -289,6 +289,7 @@ memo.RuntimeError = class extends Error {
             case "IntLiteral":
             case "CharLiteral":
             case "StringLiteral":
+            case "FloatLiteral":
                 result = node;
                 break;
             case "Conditional":
@@ -496,7 +497,7 @@ memo.RuntimeError = class extends Error {
             // if it is exactly equal to another var, we can remove it first
             // (as retire_var looks at left and right only)
             if (memo.varlist[key].type == "VariableName" && memo.varlist[key].name["varname"] === varname) {
-                memo.varlist[key] = oi.deepClone(var_reading);
+                    const updated = retireVarInAst(memo.varlist[depKey], varname, varValue);
             } else {
                 oi.retire_var(memo.varlist[key], varname, var_reading);
             }
@@ -715,8 +716,61 @@ memo.RuntimeError = class extends Error {
         }
     }
 
-    // Helper to recursively resolve all dependents before deleting a variable
+    // Helper function to recursively replace a variable with its value in an AST
+    const replaceVariableInAST = (node, varToReplace, replacement) => {
+        if (!node) return node;
+
+        // If this is a reference to the variable we're replacing, return the replacement
+        if (node.type === "VariableName" && node.name && node.name.varname === varToReplace) {
+            return oi.deepClone(replacement);
+        }
+
+        // Clone the node to avoid modifying the original
+        const result = oi.deepClone(node);
+
+        // Recursively replace in child nodes
+        if (result.type === "Additive" || result.type === "Multiplicative") {
+            result.left = replaceVariableInAST(result.left, varToReplace, replacement);
+            result.right = replaceVariableInAST(result.right, varToReplace, replacement);
+        } else if (result.type === "Comparison") {
+            result.left = replaceVariableInAST(result.left, varToReplace, replacement);
+            result.right = replaceVariableInAST(result.right, varToReplace, replacement);
+        } else if (result.type === "Conditional") {
+            result.comp = replaceVariableInAST(result.comp, varToReplace, replacement);
+            result.exp = replaceVariableInAST(result.exp, varToReplace, replacement);
+            if (result.f_else) {
+                result.f_else = replaceVariableInAST(result.f_else, varToReplace, replacement);
+            }
+        } else if (result.type === "List" && Array.isArray(result.exp)) {
+            result.exp = result.exp.map(item => replaceVariableInAST(item, varToReplace, replacement));
+        } else if (result.type === "ForLoop") {
+            if (result.range) {
+                result.range = replaceVariableInAST(result.range, varToReplace, replacement);
+            }
+            if (result.exp) {
+                result.exp = replaceVariableInAST(result.exp, varToReplace, replacement);
+            }
+        } else if (result.type === "Range") {
+            result.start = replaceVariableInAST(result.start, varToReplace, replacement);
+            result.end = replaceVariableInAST(result.end, varToReplace, replacement);
+            if (result.step) {
+                result.step = replaceVariableInAST(result.step, varToReplace, replacement);
+            }
+        } else if (result.type === "VariableWithParam") {
+            // Don't replace the function name itself, but replace in the parameter
+            if (result.param) {
+                result.param = replaceVariableInAST(result.param, varToReplace, replacement);
+            }
+        }
+
+        return result;
+    };
+
+    // Helper to resolve direct dependents only (no recursion)
+    // When clearing 'a', only variables that directly depend on 'a' get 'a' inlined
+    // Variables that depend on those (like c->b->a) maintain their dependency on b
     const resolveDependents = (varname) => {
+        // Previous logic: recursively resolve further dependents first, then evaluate and store the resolved value (no dependencies)
         for (const depKey in memo.varlist) {
             if (memo.varlist[depKey].deps && memo.varlist[depKey].deps.includes(varname)) {
                 // Recursively resolve further dependents first

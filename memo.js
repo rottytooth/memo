@@ -44,9 +44,15 @@ memo.tools.intToStr = (num) => {
                 groupWord += teens[group - 10] + " ";
             } else {
                 if (group >= 10) {
-                    groupWord += tens[Math.floor(group / 10)] + " ";
-                }
-                if (group % 10 > 0) {
+                    const tensDigit = tens[Math.floor(group / 10)];
+                    const onesDigit = ones[group % 10];
+                    if (group % 10 > 0) {
+                        // Hyphenate compound numbers like "twenty-one"
+                        groupWord += tensDigit + "-" + onesDigit + " ";
+                    } else {
+                        groupWord += tensDigit + " ";
+                    }
+                } else if (group % 10 > 0) {
                     groupWord += ones[group % 10] + " ";
                 }
             }
@@ -8242,6 +8248,7 @@ memo.RuntimeError = class extends Error {
             case "IntLiteral":
             case "CharLiteral":
             case "StringLiteral":
+            case "FloatLiteral":
                 result = node;
                 break;
             case "Conditional":
@@ -8668,32 +8675,99 @@ memo.RuntimeError = class extends Error {
         }
     }
 
-    // Helper to recursively resolve all dependents before deleting a variable
+    // Helper function to recursively replace a variable with its value in an AST
+    const replaceVariableInAST = (node, varToReplace, replacement) => {
+        if (!node) return node;
+
+        // If this is a reference to the variable we're replacing, return the replacement
+        if (node.type === "VariableName" && node.name && node.name.varname === varToReplace) {
+            return oi.deepClone(replacement);
+        }
+
+        // Clone the node to avoid modifying the original
+        const result = oi.deepClone(node);
+
+        // Recursively replace in child nodes
+        if (result.type === "Additive" || result.type === "Multiplicative") {
+            result.left = replaceVariableInAST(result.left, varToReplace, replacement);
+            result.right = replaceVariableInAST(result.right, varToReplace, replacement);
+        } else if (result.type === "Comparison") {
+            result.left = replaceVariableInAST(result.left, varToReplace, replacement);
+            result.right = replaceVariableInAST(result.right, varToReplace, replacement);
+        } else if (result.type === "Conditional") {
+            result.comp = replaceVariableInAST(result.comp, varToReplace, replacement);
+            result.exp = replaceVariableInAST(result.exp, varToReplace, replacement);
+            if (result.f_else) {
+                result.f_else = replaceVariableInAST(result.f_else, varToReplace, replacement);
+            }
+        } else if (result.type === "List" && Array.isArray(result.exp)) {
+            result.exp = result.exp.map(item => replaceVariableInAST(item, varToReplace, replacement));
+        } else if (result.type === "ForLoop") {
+            if (result.range) {
+                result.range = replaceVariableInAST(result.range, varToReplace, replacement);
+            }
+            if (result.exp) {
+                result.exp = replaceVariableInAST(result.exp, varToReplace, replacement);
+            }
+        } else if (result.type === "Range") {
+            result.start = replaceVariableInAST(result.start, varToReplace, replacement);
+            result.end = replaceVariableInAST(result.end, varToReplace, replacement);
+            if (result.step) {
+                result.step = replaceVariableInAST(result.step, varToReplace, replacement);
+            }
+        } else if (result.type === "VariableWithParam") {
+            // Don't replace the function name itself, but replace in the parameter
+            if (result.param) {
+                result.param = replaceVariableInAST(result.param, varToReplace, replacement);
+            }
+        }
+
+        return result;
+    };
+
+    // Helper to resolve direct dependents only (no recursion)
+    // When clearing 'a', only variables that directly depend on 'a' get 'a' inlined
+    // Variables that depend on those (like c->b->a) maintain their dependency on b
     const resolveDependents = (varname) => {
+        const varValue = memo.varlist[varname];
+        if (!varValue) return;
+
         for (const depKey in memo.varlist) {
             if (memo.varlist[depKey].deps && memo.varlist[depKey].deps.includes(varname)) {
-                // Recursively resolve further dependents first
-                resolveDependents(depKey);
-                // Evaluate and store the resolved value (no dependencies)
-                const resolved = oi.evalExp(memo.varlist[depKey], undefined, true);
-                if (resolved) {
+                // Replace just this variable in the dependent's AST
+                const updated = replaceVariableInAST(memo.varlist[depKey], varname, varValue);
+                if (updated) {
                     const oldParams = memo.varlist[depKey].params || [];
-                    let inlined;
-                    // Preserve the type of the resolved value
-                    if (resolved.type === "IntLiteral" || resolved.type === "FloatLiteral") {
-                        // Keep numeric types as-is
-                        inlined = oi.deepClone(resolved);
-                    } else if (resolved.type === "List" || resolved.type === "StringLiteral" || resolved.type === "CharLiteral") {
-                        // Flatten lists/strings/chars to StringLiteral
-                        inlined = { type: "StringLiteral", value: memo.tools.stringifyList(resolved, true) };
+                    const oldFade = memo.varlist[depKey].fade || 1;
+                    // Remove only this variable from deps
+                    const newDeps = memo.varlist[depKey].deps.filter(d => d !== varname);
+
+                    // If there are no remaining dependencies, evaluate to a constant
+                    // Otherwise keep the expression with updated AST
+                    if (newDeps.length === 0) {
+                        // Fully evaluate since there are no more dependencies
+                        const resolved = oi.evalExp(updated, undefined, true);
+                        if (resolved) {
+                            let inlined;
+                            if (resolved.type === "IntLiteral" || resolved.type === "FloatLiteral") {
+                                inlined = oi.deepClone(resolved);
+                            } else if (resolved.type === "List" || resolved.type === "StringLiteral" || resolved.type === "CharLiteral") {
+                                inlined = { type: "StringLiteral", value: memo.tools.stringifyList(resolved, true) };
+                            } else {
+                                inlined = oi.deepClone(resolved);
+                            }
+                            memo.varlist[depKey] = inlined;
+                            memo.varlist[depKey].fade = oldFade;
+                            memo.varlist[depKey].params = oldParams;
+                            memo.varlist[depKey].deps = [];
+                        }
                     } else {
-                        // Fallback: deep clone for other types
-                        inlined = oi.deepClone(resolved);
+                        // Keep the expression with the variable replaced
+                        memo.varlist[depKey] = updated;
+                        memo.varlist[depKey].fade = oldFade;
+                        memo.varlist[depKey].params = oldParams;
+                        memo.varlist[depKey].deps = newDeps;
                     }
-                    memo.varlist[depKey] = inlined;
-                    memo.varlist[depKey].fade = 1;
-                    memo.varlist[depKey].params = oldParams;
-                    memo.varlist[depKey].deps = []; // No more dependencies
                 }
             }
         }
