@@ -9,6 +9,14 @@ memo.preprocess = function(input) {
     // Normalize whitespace
     processed = processed.replace(/\s+/g, ' ').trim();
 
+    // Handle clarification command variants
+    // "I meant: command" -> "clarify command"
+    // "I meant command" -> "clarify command"
+    // "I mean command" -> "clarify command"
+    // "That means command" -> "clarify command"
+    // "To mean command" -> "clarify command"
+    processed = processed.replace(/\b(I\s+meant|I\s+mean|That\s+means|To\s+mean):?\s+/gi, 'clarify ');
+
     // Handle forget/clear variants - both now require a variable name
     // "forget x" -> "clear x"
     processed = processed.replace(/\bforget\b/gi, 'clear');
@@ -62,6 +70,40 @@ memo.preprocess = function(input) {
         'what\'s': 'tell me about',
         'give me': 'tell me',
     };
+
+    const operatorSynonyms = {
+        // Addition
+        'add': 'plus',
+        'added to': 'plus',
+        'adding': 'plus',
+        'sum of': 'sum',
+        'total of': 'sum',
+        'combined with': 'plus',
+
+        // Subtraction
+        'subtract': 'minus',
+        // 'subtracted from' is handled in preprocessing with operand flipping
+        'subtracting': 'minus',
+        'take away': 'minus',
+
+        // Multiplication
+        'multiply': 'times',
+        'multiplied by': 'times',
+        'mult': 'times',
+        'product of': 'product',
+
+        // Division
+        'divide': 'divided by',
+        'div': 'divided by',
+        'over': 'divided by',
+        'quotient of': 'quotient',
+
+        // Modulo
+        'mod': 'modulo',
+        'remainder': 'modulo',
+        'remainder of': 'modulus',
+    };
+
 
     // Apply command synonyms (case-insensitive)
     for (const [variant, canonical] of Object.entries(commandSynonyms)) {
@@ -134,39 +176,6 @@ memo.preprocess = function(input) {
     // "ten subtracted from five" means "five minus ten"
     processed = processed.replace(/\b(\w+)\s+subtracted\s+from\s+(\w+)/gi, '$2 minus $1');
 
-    const operatorSynonyms = {
-        // Addition
-        'add': 'plus',
-        'added to': 'plus',
-        'adding': 'plus',
-        'sum of': 'sum',
-        'total of': 'sum',
-        'combined with': 'plus',
-        
-        // Subtraction
-        'subtract': 'minus',
-        // 'subtracted from' is handled above with operand flipping
-        'subtracting': 'minus',
-        'take away': 'minus',
-        
-        // Multiplication
-        'multiply': 'times',
-        'multiplied by': 'times',
-        'mult': 'times',
-        'product of': 'product',
-        
-        // Division
-        'divide': 'divided by',
-        'div': 'divided by',
-        'over': 'divided by',
-        'quotient of': 'quotient',
-        
-        // Modulo
-        'mod': 'modulo',
-        'remainder': 'modulo',
-        'remainder of': 'modulus',
-    };
-
     for (const [variant, canonical] of Object.entries(operatorSynonyms)) {
         const regex = new RegExp(`\\b${variant}\\b`, 'gi');
         processed = processed.replace(regex, canonical);
@@ -202,5 +211,59 @@ memo.preprocess = function(input) {
     });
 
     return processed;
+};
+
+/**
+ * Process a clarification command
+ *
+ * Clarifications can only be run immediately after a syntax error, or after
+ * a series of clarifications following a syntax error.
+ *
+ * @param {string} currentLine - The current input line being processed
+ * @param {Error|null} previousError - The syntax error that precipitated the clarification
+ * @param {object} ast - The parsed AST from the parser
+ * @returns {object} - Result containing either the processed command or an error
+ */
+memo.processClarification = function(currentLine, previousError, ast) {
+    // Validate that we're in a clarification context
+    if (!previousError) {
+        return {
+            error: true,
+            message: "I can only clarify after a syntax error."
+        };
+    }
+
+    // Verify this is a clarification command
+    if (!ast || ast.cmd !== 'clarify') {
+        return {
+            error: true,
+            message: "This is not a clarification command."
+        };
+    }
+
+    // Check that the previous error was a syntax error
+    if (previousError.name !== 'SyntaxError' && !previousError.isSyntaxError) {
+        return {
+            error: true,
+            message: "I can only clarify after a syntax error, not a runtime error."
+        };
+    }
+
+    // Extract the inner command from the clarification
+    const innerCommand = ast.innerCommand;
+
+    if (!innerCommand) {
+        return {
+            error: true,
+            message: "Clarification must contain a complete command."
+        };
+    }
+
+    // Return the inner command to be processed normally
+    return {
+        error: false,
+        ast: innerCommand,
+        message: null
+    };
 };
 

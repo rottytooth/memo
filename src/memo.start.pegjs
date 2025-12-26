@@ -13,8 +13,15 @@
 	}
 }
 
-Command = c:(Clear / Print / Let / Reset) ("."?/"!"?) _* {
+Command = c:(Clarification / Clear / Print / Let / Reset) ("."?/"!"?) _* {
 	return c;
+}
+
+Clarification = (("C"/"c")"larify") _ c:Command {
+	return {
+    	cmd: "clarify",
+        innerCommand: c
+    };
 }
 
 Clear = (("C"/"c")"lear" / ("F"/"f")"orget") _ v:Identifier {

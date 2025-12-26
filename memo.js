@@ -1,6 +1,39 @@
 memo = {};
 memo.moreText = ""; // Stores remaining text for "more" command
 
+memo.operatorSynonyms = {
+    // Addition
+    'add': 'plus',
+    'added to': 'plus',
+    'adding': 'plus',
+    'sum of': 'sum',
+    'total of': 'sum',
+    'combined with': 'plus',
+
+    // Subtraction
+    'subtract': 'minus',
+    // 'subtracted from' is handled in preprocessing with operand flipping
+    'subtracting': 'minus',
+    'take away': 'minus',
+
+    // Multiplication
+    'multiply': 'times',
+    'multiplied by': 'times',
+    'mult': 'times',
+    'product of': 'product',
+
+    // Division
+    'divide': 'divided by',
+    'div': 'divided by',
+    'over': 'divided by',
+    'quotient of': 'quotient',
+
+    // Modulo
+    'mod': 'modulo',
+    'remainder': 'modulo',
+    'remainder of': 'modulus',
+};
+
 memo.tools = {
 // String utils for the []memo language
 // How to describe data in plain English
@@ -388,40 +421,7 @@ memo.preprocess = function(input) {
     // "ten subtracted from five" means "five minus ten"
     processed = processed.replace(/\b(\w+)\s+subtracted\s+from\s+(\w+)/gi, '$2 minus $1');
 
-    const operatorSynonyms = {
-        // Addition
-        'add': 'plus',
-        'added to': 'plus',
-        'adding': 'plus',
-        'sum of': 'sum',
-        'total of': 'sum',
-        'combined with': 'plus',
-        
-        // Subtraction
-        'subtract': 'minus',
-        // 'subtracted from' is handled above with operand flipping
-        'subtracting': 'minus',
-        'take away': 'minus',
-        
-        // Multiplication
-        'multiply': 'times',
-        'multiplied by': 'times',
-        'mult': 'times',
-        'product of': 'product',
-        
-        // Division
-        'divide': 'divided by',
-        'div': 'divided by',
-        'over': 'divided by',
-        'quotient of': 'quotient',
-        
-        // Modulo
-        'mod': 'modulo',
-        'remainder': 'modulo',
-        'remainder of': 'modulus',
-    };
-
-    for (const [variant, canonical] of Object.entries(operatorSynonyms)) {
+    for (const [variant, canonical] of Object.entries(memo.operatorSynonyms)) {
         const regex = new RegExp(`\\b${variant}\\b`, 'gi');
         processed = processed.replace(regex, canonical);
     }
@@ -8456,7 +8456,7 @@ memo.RuntimeError = class extends Error {
             // if it is exactly equal to another var, we can remove it first
             // (as retire_var looks at left and right only)
             if (memo.varlist[key].type == "VariableName" && memo.varlist[key].name["varname"] === varname) {
-                memo.varlist[key] = oi.deepClone(var_reading);
+                    const updated = retireVarInAst(memo.varlist[depKey], varname, varValue);
             } else {
                 oi.retire_var(memo.varlist[key], varname, var_reading);
             }
@@ -8729,45 +8729,31 @@ memo.RuntimeError = class extends Error {
     // When clearing 'a', only variables that directly depend on 'a' get 'a' inlined
     // Variables that depend on those (like c->b->a) maintain their dependency on b
     const resolveDependents = (varname) => {
-        const varValue = memo.varlist[varname];
-        if (!varValue) return;
-
+        // Previous logic: recursively resolve further dependents first, then evaluate and store the resolved value (no dependencies)
         for (const depKey in memo.varlist) {
             if (memo.varlist[depKey].deps && memo.varlist[depKey].deps.includes(varname)) {
-                // Replace just this variable in the dependent's AST
-                const updated = replaceVariableInAST(memo.varlist[depKey], varname, varValue);
-                if (updated) {
+                // Recursively resolve further dependents first
+                resolveDependents(depKey);
+                // Evaluate and store the resolved value (no dependencies)
+                const resolved = oi.evalExp(memo.varlist[depKey], undefined, true);
+                if (resolved) {
                     const oldParams = memo.varlist[depKey].params || [];
-                    const oldFade = memo.varlist[depKey].fade || 1;
-                    // Remove only this variable from deps
-                    const newDeps = memo.varlist[depKey].deps.filter(d => d !== varname);
-
-                    // If there are no remaining dependencies, evaluate to a constant
-                    // Otherwise keep the expression with updated AST
-                    if (newDeps.length === 0) {
-                        // Fully evaluate since there are no more dependencies
-                        const resolved = oi.evalExp(updated, undefined, true);
-                        if (resolved) {
-                            let inlined;
-                            if (resolved.type === "IntLiteral" || resolved.type === "FloatLiteral") {
-                                inlined = oi.deepClone(resolved);
-                            } else if (resolved.type === "List" || resolved.type === "StringLiteral" || resolved.type === "CharLiteral") {
-                                inlined = { type: "StringLiteral", value: memo.tools.stringifyList(resolved, true) };
-                            } else {
-                                inlined = oi.deepClone(resolved);
-                            }
-                            memo.varlist[depKey] = inlined;
-                            memo.varlist[depKey].fade = oldFade;
-                            memo.varlist[depKey].params = oldParams;
-                            memo.varlist[depKey].deps = [];
-                        }
+                    let inlined;
+                    // Preserve the type of the resolved value
+                    if (resolved.type === "IntLiteral" || resolved.type === "FloatLiteral") {
+                        // Keep numeric types as-is
+                        inlined = oi.deepClone(resolved);
+                    } else if (resolved.type === "List" || resolved.type === "StringLiteral" || resolved.type === "CharLiteral") {
+                        // Flatten lists/strings/chars to StringLiteral
+                        inlined = { type: "StringLiteral", value: memo.tools.stringifyList(resolved, true) };
                     } else {
-                        // Keep the expression with the variable replaced
-                        memo.varlist[depKey] = updated;
-                        memo.varlist[depKey].fade = oldFade;
-                        memo.varlist[depKey].params = oldParams;
-                        memo.varlist[depKey].deps = newDeps;
+                        // Fallback: deep clone for other types
+                        inlined = oi.deepClone(resolved);
                     }
+                    memo.varlist[depKey] = inlined;
+                    memo.varlist[depKey].fade = 1;
+                    memo.varlist[depKey].params = oldParams;
+                    memo.varlist[depKey].deps = []; // No more dependencies
                 }
             }
         }
