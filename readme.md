@@ -2,11 +2,17 @@
 
 An interpreter that only performs what it can see. Code flows off the screen into oblivion.
 
-## Inspiration
+## Sample program
 
-One day I was reading Paul Graham's *(on lisp)* and decided to make a lisp that uses no parantheses at all. It is written entirely in pseudo-natural language.
+Remember Say with n as if n is zero then "No more bottles", else if n is one then "one bottle", else n as string plus " bottles".
 
+Remember Next with n as if n is one then "no more bottles", else if n is zero then "ninety nine bottles", else n plus " bottles".
 
+Remember Action with n as if n is zero then "Go to the store and buy some more", else "Take one down and pass it around".
+
+Remember Print99 as for beer in ninety-nine to zero, beer's Say, " of beer on the wall, ", beer's Say, " of beer.\n", beer's Action, "\n", beer's Next, " of beer on the wall.\n".
+
+Tell me about Print99.
 
 ## To Use
 
