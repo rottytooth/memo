@@ -442,4 +442,38 @@ describe('Memo Preprocessor Tests', () => {
             expect(result).toBe('Remember x as five.');
         });
     });
+
+    describe('Clarification Command', () => {
+        test('Clarification after syntax error calls processClarification', () => {
+            // Mock processClarification to track if it's called
+            const originalProcessClarification = memo.processClarification;
+            let processClarificationCalled = false;
+
+            memo.processClarification = function(currentLine, previousLine, ast) {
+                processClarificationCalled = true;
+                return originalProcessClarification.call(this, currentLine, previousLine, ast);
+            };
+
+            try {
+                // First line: syntax error
+                const firstLine = "Let's make g three.";
+                const firstResult = memo.interpreter.parse(firstLine);
+                expect(firstResult).toContain("didn't understand");
+
+                // Second line: clarification
+                const secondLine = "I meant Remember g as three.";
+                const secondResult = memo.interpreter.parse(secondLine);
+
+                // Verify processClarification was called
+                expect(processClarificationCalled).toBe(true);
+
+                // TODO: Fill out the rest of the test to verify the clarification worked
+                // For now, just verify that processClarification was reached
+
+            } finally {
+                // Restore original function
+                memo.processClarification = originalProcessClarification;
+            }
+        });
+    });
 });

@@ -710,6 +710,11 @@ memo.RuntimeError = class extends Error {
                 }
                 return printOutput;
             }
+            case "clarify": {
+                // Clarification handling - this should not be reached directly
+                // as clarifications are processed in the parse function
+                return "I can only clarify after a syntax error.";
+            }
             default: {
                 return "Unknown command.";
             }
@@ -846,12 +851,12 @@ memo.RuntimeError = class extends Error {
         let ast;
 
         input = input.trim();
-        
+
         // Check for "more" or "tell me more" command
         if (input.toLowerCase() === "more." || input.toLowerCase() === "tell me more.") {
             if (memo.moreText && memo.moreText.length > 0) {
                 let output = memo.moreText.substring(0, 2000);
-                
+
                 // Find the last space within the 2000 characters to break at word boundary
                 if (memo.moreText.length > 2000) {
                     const lastSpace = output.lastIndexOf(' ');
@@ -864,7 +869,7 @@ memo.RuntimeError = class extends Error {
                 } else {
                     memo.moreText = memo.moreText.substring(output.length);
                 }
-                
+
                 return output + (memo.moreText.length > 0 ? "..." : "");
             } else {
                 return "There is nothing more.";
@@ -875,17 +880,20 @@ memo.RuntimeError = class extends Error {
             console.log("Before preprocessing: ", input);
 
         // Preprocess input
-        input = memo.preprocess(input);
+        const preprocessedInput = memo.preprocess(input);
 
         if (DEBUG)
-            console.log("After preprocessing: ", input);
+            console.log("After preprocessing: ", preprocessedInput);
 
         try {
-            ast = memo.parser.parse(input);
+            ast = memo.parser.parse(preprocessedInput);
         } catch (e) {
             fadeVars();
+            // Store the error and the line for potential clarification
+            memo.lastError = e;
+            memo.lastLine = input;
             if (e.name == "SyntaxError") {
-                const word = getWordAt(input, e.location.start.column - 1);
+                const word = getWordAt(preprocessedInput, e.location.start.column - 1);
                 if (word) {
                     return `I didn't understand ${word}.`;
                 } else {
@@ -902,6 +910,25 @@ memo.RuntimeError = class extends Error {
             } else {
                 return `I ran into an internal issue: ${e}.`;
             }
+        }
+
+        // Check if this is a clarification command
+        if (ast && ast.cmd === 'clarify') {
+            const clarificationResult = memo.processClarification(input, memo.lastLine, ast);
+
+            if (clarificationResult.error) {
+                return clarificationResult.message;
+            }
+
+            // Process the inner command
+            ast = clarificationResult.ast;
+            // Clear the last error since we're processing the clarification
+            memo.lastError = null;
+            memo.lastLine = null;
+        } else {
+            // Clear last error for non-clarification commands
+            memo.lastError = null;
+            memo.lastLine = null;
         }
 
         try {
