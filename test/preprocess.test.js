@@ -449,22 +449,26 @@ describe('Memo Preprocessor Tests', () => {
             const originalProcessClarification = memo.processClarification;
             let processClarificationCalled = false;
 
-            memo.processClarification = function(currentLine, previousError, ast) {
+            memo.processClarification = function(currentLine, previousLine, ast) {
                 processClarificationCalled = true;
-                return originalProcessClarification.call(this, currentLine, previousError, ast);
+                return originalProcessClarification.call(this, currentLine, previousLine, ast);
             };
 
             try {
                 // First line: syntax error
                 const firstLine = "Let's make g three.";
                 const firstResult = memo.interpreter.parse(firstLine);
+                expect(firstResult).toContain("didn't understand");
 
                 // Second line: clarification
                 const secondLine = "I meant Remember g as three.";
-                // TODO: This should eventually call processClarification when interpreter is updated
-                // For now, just verify preprocessing works
-                const preprocessed = memo.preprocess(secondLine);
-                expect(preprocessed).toBe('clarify Remember g as three.');
+                const secondResult = memo.interpreter.parse(secondLine);
+
+                // Verify processClarification was called
+                expect(processClarificationCalled).toBe(true);
+
+                // TODO: Fill out the rest of the test to verify the clarification worked
+                // For now, just verify that processClarification was reached
 
             } finally {
                 // Restore original function

@@ -214,17 +214,84 @@ memo.preprocess = function(input) {
 };
 
 /**
+ * Extract variable names and expressions from AST
+ */
+memo.extractPlaceholders = function(ast) {
+    const placeholders = [];
+
+    if (ast.cmd === 'let') {
+        // Assignment command: "Remember x as value"
+        placeholders.push({ type: 'varname', value: ast.varname });
+
+        // Extract expression (could be a literal, variable reference, etc.)
+        if (ast.exp) {
+            const expStr = memo.tools.expToStr(ast.exp, false);
+            placeholders.push({ type: 'expression', value: expStr });
+        }
+    } else if (ast.cmd === 'print') {
+        // Print command: "Tell me x"
+        if (ast.exp) {
+            const expStr = memo.tools.expToStr(ast.exp, false);
+            placeholders.push({ type: 'expression', value: expStr });
+        }
+    }
+
+    return placeholders;
+};
+
+/**
+ * Create a pattern from previousLine with placeholders for variables/expressions
+ */
+memo.createPattern = function(previousLine, placeholders) {
+    let pattern = previousLine;
+
+    // Replace each placeholder value with a placeholder token
+    placeholders.forEach((placeholder, index) => {
+        const token = `{${placeholder.type}${index}}`;
+        // Try to find and replace the placeholder value in the pattern
+        // Use case-insensitive search
+        const regex = new RegExp(placeholder.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        pattern = pattern.replace(regex, token);
+    });
+
+    return pattern;
+};
+
+/**
+ * Store learned pattern in local storage
+ */
+memo.learnPattern = function(pattern, commandType, placeholders) {
+    // Initialize learned patterns if not exists
+    if (typeof localStorage !== 'undefined') {
+        let learnedPatterns = localStorage.getItem('memo.learnedPatterns');
+        learnedPatterns = learnedPatterns ? JSON.parse(learnedPatterns) : [];
+
+        learnedPatterns.push({
+            pattern: pattern,
+            commandType: commandType, // 'remember' or 'tell'
+            placeholders: placeholders,
+            timestamp: Date.now()
+        });
+
+        localStorage.setItem('memo.learnedPatterns', JSON.stringify(learnedPatterns));
+    }
+};
+
+/**
  * Process a clarification command
  *
  * Clarifications can only be run immediately after a syntax error, or after
  * a series of clarifications following a syntax error.
  *
  * @param {string} currentLine - The current input line being processed
- * @param {Error|null} previousError - The syntax error that precipitated the clarification
+ * @param {string} previousLine - The previous line that caused a syntax error
  * @param {object} ast - The parsed AST from the parser
  * @returns {object} - Result containing either the processed command or an error
  */
-memo.processClarification = function(currentLine, previousError, ast) {
+memo.processClarification = function(currentLine, previousLine, ast) {
+    // Get the previous error from memo.lastError
+    const previousError = memo.lastError;
+
     // Validate that we're in a clarification context
     if (!previousError) {
         return {
@@ -257,6 +324,23 @@ memo.processClarification = function(currentLine, previousError, ast) {
             error: true,
             message: "Clarification must contain a complete command."
         };
+    }
+
+    // Learn the pattern: map previousLine to the correct command
+    const placeholders = memo.extractPlaceholders(innerCommand);
+    const pattern = memo.createPattern(previousLine, placeholders);
+
+    // Determine command type
+    let commandType = null;
+    if (innerCommand.cmd === 'let') {
+        commandType = 'remember';
+    } else if (innerCommand.cmd === 'print') {
+        commandType = 'tell';
+    }
+
+    // Store the learned pattern
+    if (commandType) {
+        memo.learnPattern(pattern, commandType, placeholders);
     }
 
     // Return the inner command to be processed normally

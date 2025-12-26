@@ -1,6 +1,6 @@
-Remember Say with n as if n is zero then "No more bottles", else if n is one then "one bottle", else n as string plus " bottles".
+Remember Say with n as if n is zero then "No more bottles", else if n is one then "one bottle", else n plus " bottles".
 
-Remember Next with n as if n is one then "no more bottles", else if n is zero then "ninety nine bottles", else n plus " bottles".
+Remember Next with n as if n is one then "no more bottles", else if n is zero then "ninety nine bottles", else n minus one, " bottles".
 
 Remember Action with n as if n is zero then "Go to the store and buy some more", else "Take one down and pass it around".
 
