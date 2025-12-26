@@ -41,9 +41,15 @@ memo.tools.intToStr = (num) => {
                 groupWord += teens[group - 10] + " ";
             } else {
                 if (group >= 10) {
-                    groupWord += tens[Math.floor(group / 10)] + " ";
-                }
-                if (group % 10 > 0) {
+                    const tensDigit = tens[Math.floor(group / 10)];
+                    const onesDigit = ones[group % 10];
+                    if (group % 10 > 0) {
+                        // Hyphenate compound numbers like "twenty-one"
+                        groupWord += tensDigit + "-" + onesDigit + " ";
+                    } else {
+                        groupWord += tensDigit + " ";
+                    }
+                } else if (group % 10 > 0) {
                     groupWord += ones[group % 10] + " ";
                 }
             }

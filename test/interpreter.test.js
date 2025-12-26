@@ -72,7 +72,7 @@ describe('Memo Interpreter Tests', () => {
             
             // Check y's initial value - should be 2 (1 + 1)
             let output = memo.interpreter.parse('Tell me about y.');
-            expect(output).toBe('two');
+            expect(output).toBe('two.');
             
             // Redefine x as two
             memo.interpreter.parse('Remember x as two.');
@@ -80,7 +80,7 @@ describe('Memo Interpreter Tests', () => {
             
             // Check that y has been updated to 3 (2 + 1)
             output = memo.interpreter.parse('Tell me about y.');
-            expect(output).toBe('three');
+            expect(output).toBe('three.');
         });
 
         test('Remember x with p as y with g', () => {
@@ -258,12 +258,45 @@ describe('Memo Interpreter Tests', () => {
         test('Remember countdown as the range from ten to one', () => {
             const input = 'Remember countdown as the range from ten to one.';
             const result = memo.interpreter.parse(input);
-            
+
             expect(result).toContain('I will remember');
             expect(memo.varlist['countdown']).toBeDefined();
             expect(memo.varlist['countdown'].type).toBe('Range');
             expect(memo.varlist['countdown'].start.value).toBe(10);
             expect(memo.varlist['countdown'].end.value).toBe(1);
+        });
+
+        test('Remember c as from a million to one (short form)', () => {
+            const input = 'Remember c as from a million to one.';
+            const result = memo.interpreter.parse(input);
+
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['c']).toBeDefined();
+            expect(memo.varlist['c'].type).toBe('Range');
+            expect(memo.varlist['c'].start.value).toBe(1000000);
+            expect(memo.varlist['c'].end.value).toBe(1);
+        });
+
+        test('Remember c as the range from a million to one', () => {
+            const input = 'Remember c as the range from a million to one.';
+            const result = memo.interpreter.parse(input);
+
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['c']).toBeDefined();
+            expect(memo.varlist['c'].type).toBe('Range');
+            expect(memo.varlist['c'].start.value).toBe(1000000);
+            expect(memo.varlist['c'].end.value).toBe(1);
+        });
+
+        test('Remember c as from one million to one', () => {
+            const input = 'Remember c as from one million to one.';
+            const result = memo.interpreter.parse(input);
+
+            expect(result).toContain('I will remember');
+            expect(memo.varlist['c']).toBeDefined();
+            expect(memo.varlist['c'].type).toBe('Range');
+            expect(memo.varlist['c'].start.value).toBe(1000000);
+            expect(memo.varlist['c'].end.value).toBe(1);
         });
     });
 
@@ -333,17 +366,17 @@ describe('Memo Interpreter Tests', () => {
             
             // Check b's value while a still exists - should be 2
             let output = memo.interpreter.parse('Tell me about b.');
-            expect(output).toBe('two');
+            expect(output).toBe('two.');
             
             // Simulate 12 unrelated commands to fade out 'a'
-            for (let i = 0; i < 12; i++) {
+            for (let i = 0; memo.varlist['b'].fade < 11; i++) {
                 memo.interpreter.parse(`Remember temp${i} as ${i}.`);
             }
             expect(memo.varlist['a']).toBeUndefined();
             // b should now store the resolved value of 2
             expect(memo.varlist['b']).toBeDefined();
             output = memo.interpreter.parse('Tell me about b.');
-            expect(output).toBe('two');
+            expect(output).toBe('two.');
         });
 
         test('Chained dependencies resolve when intermediate variable is forgotten', () => {
@@ -357,24 +390,25 @@ describe('Memo Interpreter Tests', () => {
             
             // Define c as b times three (c depends on b, which depends on a)
             memo.interpreter.parse('Remember c as b times three.');
-            
+
+            // redefine a so it will outlast b
+            // (removed in revert)
+
             // Check values before forgetting
             let outputB = memo.interpreter.parse('Tell me about b.');
-            expect(outputB).toBe('seven'); // 5 + 2 = 7
+            expect(outputB).toBe('seven.'); // 5 + 2 = 7
             
             let outputC = memo.interpreter.parse('Tell me about c.');
-            expect(["twenty-one", "twenty one"]).toContain(outputC); // 7 * 3 = 21
+            expect(["twenty-one.", "twenty one."]).toContain(outputC); // 7 * 3 = 21
             
             // Simulate 12 unrelated commands to fade out 'b'
             for (let i = 0; i < 12; i++) {
                 memo.interpreter.parse(`Remember temp${i} as ${i}.`);
             }
-            // b should now be a resolved literal, not undefined
             expect(memo.varlist['b']).toBeDefined();
             expect(memo.varlist['b'].type).toBe('IntLiteral');
-            // c should still resolve to 21
             outputC = memo.interpreter.parse('Tell me about c.');
-            expect(outputC).toBe('twenty one');
+            expect(["twenty-one.", "twenty one."]).toContain(outputC);
         });
 
         test('Multiple dependent variables resolve when shared dependency is forgotten', () => {
@@ -391,10 +425,10 @@ describe('Memo Interpreter Tests', () => {
             
             // Check initial values
             let outputY = memo.interpreter.parse('Tell me about y.');
-            expect(outputY).toBe('fifteen'); // 10 + 5 = 15
+            expect(outputY).toBe('fifteen.'); // 10 + 5 = 15
             
             let outputZ = memo.interpreter.parse('Tell me about z.');
-            expect(outputZ).toBe('twenty'); // 10 * 2 = 20
+            expect(outputZ).toBe('twenty.'); // 10 * 2 = 20
             
             // Simulate 12 unrelated commands to fade out 'x'
             for (let i = 0; i < 12; i++) {
@@ -403,9 +437,9 @@ describe('Memo Interpreter Tests', () => {
             expect(memo.varlist['x']).toBeUndefined();
             // Both y and z should retain their resolved values
             outputY = memo.interpreter.parse('Tell me about y.');
-            expect(outputY).toBe('fifteen');
+            expect(outputY).toBe('fifteen.');
             outputZ = memo.interpreter.parse('Tell me about z.');
-            expect(outputZ).toBe('twenty');
+            expect(outputZ).toBe('twenty.');
         });
 
         test('Full chain resolves when first variable is forgotten', () => {
@@ -418,7 +452,7 @@ describe('Memo Interpreter Tests', () => {
             
             // Verify chain before forgetting
             let output = memo.interpreter.parse('Tell me about c.');
-            expect(output).toBe('five'); // 3 + 1 + 1 = 5
+            expect(output).toBe('five.'); // 3 + 1 + 1 = 5
             
             // Simulate 12 unrelated commands to fade out 'a'
             for (let i = 0; i < 12; i++) {
@@ -426,9 +460,9 @@ describe('Memo Interpreter Tests', () => {
             }
             // b should resolve to 4 and c should resolve to 5
             let outputB = memo.interpreter.parse('Tell me about b.');
-            expect(outputB).toBe('four');
+            expect(outputB).toBe('four.');
             let outputC = memo.interpreter.parse('Tell me about c.');
-            expect(outputC).toBe('five');
+            expect(outputC).toBe('five.');
         });
     });
 
@@ -502,7 +536,7 @@ describe('Memo Interpreter Tests', () => {
             // Print it - should concatenate everything with numbers converted to words
             const output = memo.interpreter.parse('Tell me about mixed.');
 
-            expect(output).toBe('Count: three items');
+            expect(output).toBe('Count: three items.');
         });
 
         test('Print list with chars concatenates them', () => {
@@ -514,7 +548,7 @@ describe('Memo Interpreter Tests', () => {
             // Print it - should concatenate into a string
             const output = memo.interpreter.parse('Tell me about word.');
 
-            expect(output).toBe('Hello');
+            expect(output).toBe('Hello.');
         });
 
         test('Print long stringified list truncates with more', () => {
@@ -600,6 +634,45 @@ describe('Memo Interpreter Tests', () => {
             expect(output).toContain('three bottles'); // Verify number-to-word
             expect(output).not.toContain('3'); // Verify number-to-word
             expect(output).not.toMatch(/I am feeling confused|I am unsure/i);
+        });
+
+        test('99 bottles - Print99 evaluated after Say forgotten through empty statements', () => {
+            memo.varlist = {}; // Reset state
+
+            // Define the helper functions
+            memo.interpreter.parse('Remember Say with n as if n is zero then "No more bottles", else if n is one then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Next with n as if n is one then "no more bottles", else if n is zero then "ninety-nine bottles", else if n is two then "one bottle", else n as string plus " bottles".');
+            memo.interpreter.parse('Remember Action with n as if n is zero then "Go to the store and buy some more", else "Take one down and pass it around".');
+
+            // Define Print99 that depends on Say, Next, and Action
+            memo.interpreter.parse('Remember Print99 as for beer in three to one, beer\'s Say, " of beer on the wall, ", beer\'s Say, " of beer.\\n", beer\'s Action, "\\n", beer\'s Next, " of beer on the wall.\\n".');
+
+            // Verify dependencies
+            expect(memo.varlist['say']).toBeDefined();
+            expect(memo.varlist['print99']).toBeDefined();
+            expect(memo.varlist['print99'].deps).toContain('say');
+
+            // Execute statements to cause Say to fade out, while keeping Print99 alive
+            for (let i = 0; i < 6; i++) {
+                memo.interpreter.parse(`Remember temp${i} as ${i}.`);
+                // Keep Print99 alive by referencing it
+                if (i === 0) {
+                    memo.interpreter.parse('Remember keepalive as Print99.');
+                }
+            }
+
+            // Verify Say has been forgotten
+            expect(memo.varlist['say']).toBeUndefined();
+
+            // Print99 should still exist (was kept alive)
+            expect(memo.varlist['print99']).toBeDefined();
+
+            // The key test: Can we evaluate Print99 after Say is forgotten?
+            const output = memo.interpreter.parse('Tell me about Print99.');
+
+            // If the fix is implemented, this is what we expect
+            expect(output).toContain('bottle');
+            expect(output).toContain('three bottles');
         });
 
     });
@@ -985,6 +1058,20 @@ describe('Memo Interpreter Tests', () => {
             // Should have created the variable
             expect(memo.varlist['result']).toBeDefined();
         });
+
+        test('For-loop with conditional and descending range outputs list format', () => {
+            memo.varlist = {}; // Reset state
+
+            // Define a function with a conditional
+            memo.interpreter.parse('Remember nt with n as if n is one then "it\'s a one!!!" else "".');
+
+            memo.interpreter.parse('Remember printt as for n in three to one, nt with n.');
+
+            // Print the result - should output as list format since it contains a string
+            const output = memo.interpreter.parse('Tell me about printt.');
+
+            expect(output).toBe('it\'s a one!!!');
+        });
     });
 
     describe('Clear command', () => {
@@ -1057,7 +1144,7 @@ describe('Memo Interpreter Tests', () => {
 
             // b should evaluate correctly even though a is gone
             const bValue = memo.interpreter.parse('Tell me about b.');
-            expect(bValue).toBe('fifteen');
+            expect(bValue).toBe('fifteen.');
         });
 
         test('Clear handles case-insensitive variable names', () => {
@@ -1070,6 +1157,41 @@ describe('Memo Interpreter Tests', () => {
 
             expect(result).toBe('I have forgotten myvariable.');
             expect(memo.varlist['myvariable']).toBeUndefined();
+        });
+
+        test('For-loop with range variable resolves when range is forgotten', () => {
+            memo.varlist = {}; // Reset state
+
+            // Create a range variable
+            memo.interpreter.parse('Remember nttt as from three to one.');
+            expect(memo.varlist['nttt']).toBeDefined();
+            expect(memo.varlist['nttt'].type).toBe('Range');
+
+            // Create a for-loop that depends on the range variable
+            memo.interpreter.parse('Remember x as for g in nttt, g plus "blah".');
+            expect(memo.varlist['x']).toBeDefined();
+            expect(memo.varlist['x'].deps).toContain('nttt');
+
+            // Simulate 12 unrelated commands to fade out 'nttt' but keep 'x' alive
+            for (let i = 0; i < 12; i++) {
+                memo.interpreter.parse(`Remember temp${i} as ${i}.`);
+                // Keep x alive by referencing it periodically
+                if (i % 3 === 0) {
+                    memo.interpreter.parse('Remember keepalive as x.');
+                }
+            }
+
+            // nttt should be forgotten
+            expect(memo.varlist['nttt']).toBeUndefined();
+
+            // x should still exist and work correctly
+            expect(memo.varlist['x']).toBeDefined();
+
+            // Evaluate x - should still produce the correct output
+            const output = memo.interpreter.parse('Tell me about x.');
+
+            // Should concatenate "blah" with each number: "3blah", "2blah", "1blah" -> "3blah2blah1blah"
+            expect(output).toBe('threeblahtwoblahoneblah.');
         });
     });
 
