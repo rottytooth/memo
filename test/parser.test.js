@@ -1,3 +1,65 @@
+            describe('Filtered Expression Parsing', () => {
+                test('parses expression with where filter', () => {
+                    const code = 'Remember z as n where n is greater than zero.';
+                    const preprocessed = memo.preprocess(code);
+                    const parsed = memo.parser.parse(preprocessed);
+                    expect(parsed.cmd).toBe('let');
+                    expect(parsed.varname).toBe('z');
+                    expect(parsed.exp.type).toBe('FilteredExpression');
+                    expect(parsed.exp.exp.type).toBe('VariableName');
+                    expect(parsed.exp.exp.name.varname).toBe('n');
+                    expect(parsed.exp.filter.type).toBe('Comparison');
+                    expect(parsed.exp.filter.left.type).toBe('VariableName');
+                    expect(parsed.exp.filter.left.name.varname).toBe('n');
+                    expect(parsed.exp.filter.operator).toBe('>');
+                    expect(parsed.exp.filter.right.value).toBe(0);
+                });
+                test('parses expression with when filter', () => {
+                    const code = 'Remember z as n when n is less than ten.';
+                    const preprocessed = memo.preprocess(code);
+                    const parsed = memo.parser.parse(preprocessed);
+                    expect(parsed.exp.type).toBe('FilteredExpression');
+                    expect(parsed.exp.filter.operator).toBe('<');
+                });
+            });
+        
+    describe('Conditional Parsing', () => {
+        test('if/otherwise parses as if/else', () => {
+            const code = 'Remember x as if five is five then "yes" otherwise "no".';
+            const preprocessed = memo.preprocess(code);
+            const parsed = memo.parser.parse(preprocessed);
+            expect(parsed.cmd).toBe('let');
+            expect(parsed.varname).toBe('x');
+            expect(parsed.exp.type).toBe('Conditional');
+            expect(parsed.exp.comp.left.value).toBe(5);
+            expect(parsed.exp.comp.operator).toBe('==');
+            expect(parsed.exp.comp.right.value).toBe(5);
+            expect(parsed.exp.exp.value).toBe('yes');
+            expect(parsed.exp.f_else.value).toBe('no');
+        });
+
+        test('if/otherwise if/otherwise parses as if/else if/else', () => {
+            const code = 'Remember y as if five is four then "no" otherwise if five is five then "yes" otherwise "maybe".';
+            const preprocessed = memo.preprocess(code);
+            const parsed = memo.parser.parse(preprocessed);
+            expect(parsed.cmd).toBe('let');
+            expect(parsed.varname).toBe('y');
+            expect(parsed.exp.type).toBe('Conditional');
+            // First condition: five is four
+            expect(parsed.exp.comp.left.value).toBe(5);
+            expect(parsed.exp.comp.operator).toBe('==');
+            expect(parsed.exp.comp.right.value).toBe(4);
+            expect(parsed.exp.exp.value).toBe('no');
+            // Else if: five is five
+            expect(parsed.exp.f_else.type).toBe('Conditional');
+            expect(parsed.exp.f_else.comp.left.value).toBe(5);
+            expect(parsed.exp.f_else.comp.operator).toBe('==');
+            expect(parsed.exp.f_else.comp.right.value).toBe(5);
+            expect(parsed.exp.f_else.exp.value).toBe('yes');
+            // Else: "maybe"
+            expect(parsed.exp.f_else.f_else.value).toBe('maybe');
+        });
+    });
 /**
  * Memo Parser Tests
  * Tests for parsing (AST structure only, no evaluation)

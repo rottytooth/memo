@@ -88,9 +88,9 @@ Identifier = v:NumberLiteral {
 }
 
 Lambda = "lambda" {
-  return {
-    	type: "Lambda",
+	return {
+			type: "Lambda",
 
-      // exp: exp
-    };
+			// exp: exp
+		};
 } / Expression

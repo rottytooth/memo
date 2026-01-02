@@ -1,3 +1,111 @@
+    describe('Filtered Expression Evaluation', () => {
+        test('filters a list using a where condition', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember g as from one to three.');
+            memo.interpreter.parse('Remember h with n as g where n is less than two.');
+            const output = memo.interpreter.parse('Tell me about h.');
+            expect(output).toBe('one.');
+        });
+
+        test('filters a single item that passes the condition', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember x as five.');
+            memo.interpreter.parse('Remember y with n as x where n is greater than three.');
+            const output = memo.interpreter.parse('Tell me about y.');
+            expect(output).toBe('five.');
+        });
+
+        test('filters a single item that fails the condition (returns Nothing)', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember x as two.');
+            memo.interpreter.parse('Remember y with n as x where n is greater than five.');
+            const output = memo.interpreter.parse('Tell me about y.');
+            expect(output).toBe('Nothing.');
+        });
+
+        test('filters a single item with equality check', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember x as ten.');
+            memo.interpreter.parse('Remember y with n as x where n is equal to ten.');
+            const output = memo.interpreter.parse('Tell me about y.');
+            expect(output).toBe('ten.');
+        });
+
+        test('filtered expression displays correctly and tracks dependencies', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember g as from one to five.');
+            const output = memo.interpreter.parse('Remember h with n as g where n is greater than two.');
+            // Check that the assignment message shows the full expression
+            expect(output).toContain('I will remember h');
+            // Check that the stored variable has dependencies
+            expect(memo.varlist.h.deps).toContain('g');
+            // Check the expression stringifies correctly
+            const expStr = memo.tools.expToStr(memo.varlist.h, false);
+            expect(expStr).toContain('where');
+            expect(expStr).toContain('greater than');
+        });
+    });
+
+    describe('Nothing vs Zero Behavior', () => {
+        test('Zero value displays as "zero", not "Nothing"', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember x as zero.');
+            const output = memo.interpreter.parse('Tell me about x.');
+            expect(output).toBe('zero.');
+        });
+
+        test('Empty list displays as "Nothing"', () => {
+            memo.varlist = {}; // Reset state
+            // Create an empty list through filtering
+            memo.interpreter.parse('Remember nums as from one to three.');
+            memo.interpreter.parse('Remember threshold as one hundred.');
+            memo.interpreter.parse('Remember empty with n as nums where n is greater than threshold.');
+            const output = memo.interpreter.parse('Tell me about empty.');
+            expect(output).toBe('Nothing.');
+        });
+
+        test('List containing zero displays zero correctly', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember listwithzero as from zero to two.');
+            const output = memo.interpreter.parse('Tell me about listwithzero.');
+            expect(output).toContain('zero');
+            expect(output).toContain('one');
+            expect(output).toContain('two');
+            expect(output).not.toBe('Nothing.');
+        });
+
+        test('NothingLiteral from failed filter is not the same as zero', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember a as five.');
+            memo.interpreter.parse('Remember nothing_val with n as a where n is greater than ten.');
+            memo.interpreter.parse('Remember zero_val as zero.');
+
+            const nothingOutput = memo.interpreter.parse('Tell me about nothing_val.');
+            const zeroOutput = memo.interpreter.parse('Tell me about zero_val.');
+
+            expect(nothingOutput).toBe('Nothing.');
+            expect(zeroOutput).toBe('zero.');
+            expect(nothingOutput).not.toBe(zeroOutput);
+        });
+
+        test('Empty filtered list displays as Nothing', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to five.');
+            memo.interpreter.parse('Remember big as fifty.');
+            memo.interpreter.parse('Remember filtered with n as nums where n is greater than big.');
+            const output = memo.interpreter.parse('Tell me about filtered.');
+            expect(output).toBe('Nothing.');
+        });
+
+        test('Non-empty filtered list does not display as Nothing', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to ten.');
+            memo.interpreter.parse('Remember filtered with n as nums where n is greater than five.');
+            const output = memo.interpreter.parse('Tell me about filtered.');
+            expect(output).not.toBe('Nothing.');
+            expect(output).toContain('six');
+        });
+    });
 /**
  * Memo Interpreter Tests
  * Tests for interpreter evaluation and execution

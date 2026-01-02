@@ -124,6 +124,8 @@ memo.tools.stringifyList = (node) => {
     if (!node) return "";
 
     switch(node.type) {
+            case "NothingLiteral":
+                return "Nothing";
             case "IntLiteral":
                 return memo.tools.intToStr(node.value);
             case "FloatLiteral":
@@ -134,9 +136,13 @@ memo.tools.stringifyList = (node) => {
                 return node.value;
             case "List":
                 if (Array.isArray(node.exp)) {
+                    // Empty list should return "Nothing"
+                    if (node.exp.length === 0) {
+                        return "Nothing";
+                    }
                     return node.exp.map(elem => memo.tools.stringifyList(elem)).join("");
                 }
-                return "";
+                return "Nothing";
             default:
                 return "";
     }
@@ -155,7 +161,9 @@ memo.tools.expToStr = (node, isHtml) => {
             if (node.operator == "*")
                 return `(${memo.tools.expToStr(node.left, isHtml)} times ${memo.tools.expToStr(node.right, isHtml)})`;
             if (node.operator == "/")
-                return `(${memo.tools.expToStr(node.left, isHtml)} divided by ${memo.tools.expToStr(node.right, isHtml)})`; 
+                return `(${memo.tools.expToStr(node.left, isHtml)} divided by ${memo.tools.expToStr(node.right, isHtml)})`;
+        case "NothingLiteral":
+            return "Nothing";
         case "IntLiteral":
             return memo.tools.intToStr(node.value);
         case "FloatLiteral":
@@ -219,6 +227,15 @@ memo.tools.expToStr = (node, isHtml) => {
             return `${funcName} with ${paramStr}`;
         case "Lambda":
             return "lambda";
+        case "FilteredExpression":
+            // Build the filter condition string
+            let filterStr = "";
+            if (node.filter) {
+                filterStr = memo.tools.expToStr(node.filter, isHtml);
+            }
+
+            // Format: "expression where condition" or "expression when condition"
+            return `${memo.tools.expToStr(node.exp, isHtml)} where ${filterStr}`;
         case "ForLoop":
             let rangeStr = "";
             if (node.range) {

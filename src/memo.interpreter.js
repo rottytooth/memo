@@ -47,6 +47,26 @@ memo.RuntimeError = class extends Error {
         if (node.type === "Comparison") {
             return oi.getDependencies(node.left).concat(oi.getDependencies(node.right));
         }
+        if (node.type === "FilteredExpression") {
+            // Get dependencies from the expression being filtered
+            let deps = oi.getDependencies(node.exp);
+            // Get dependencies from the filter condition (but exclude the filter variable itself)
+            if (node.filter) {
+                const filterDeps = oi.getDependencies(node.filter);
+                // Try to determine the filter variable name
+                let filterVar = null;
+                if (node.filter.left && node.filter.left.type === "VariableName") {
+                    filterVar = node.filter.left.name.varname;
+                }
+                // Add filter dependencies except the filter variable itself
+                for (const dep of filterDeps) {
+                    if (dep !== filterVar) {
+                        deps.push(dep);
+                    }
+                }
+            }
+            return deps;
+        }
         if (node.type === "ForLoop") {
             // ForLoop node - get dependencies from the body expression
             let deps = [];
@@ -274,6 +294,55 @@ memo.RuntimeError = class extends Error {
         
         let result;
         switch(node.type) {
+            case "FilteredExpression":
+                if (currState) {
+                    // Evaluate the main expression
+                    let evalVal = oi.evalExp(node.exp, params, true);
+                    if (evalVal.type === "Range") {
+                        evalVal = memo.tools.rangeToList(evalVal);
+                    }
+
+                    // Try to infer the filter variable name from the filter expression
+                    // Assume filter is a Comparison and left is VariableName
+                    let filterVar = null;
+                    if (node.filter && node.filter.left && node.filter.left.type === "VariableName") {
+                        filterVar = node.filter.left.name.varname;
+                    }
+                    if (!filterVar) {
+                        throw new memo.RuntimeError("Cannot determine filter variable for filtered expression.");
+                    }
+
+                    // Helper function to test if an item passes the filter
+                    const testFilter = (item) => {
+                        const filterParams = [{ varname: filterVar, value: item }];
+                        const filterResult = oi.evalExp(node.filter, filterParams, true);
+                        // Accept if filterResult is true (BooleanLiteral true or number != 0)
+                        if (filterResult && filterResult.type === "BooleanLiteral") {
+                            return !!filterResult.value;
+                        }
+                        if (filterResult && filterResult.type === "IntLiteral") {
+                            return filterResult.value !== 0;
+                        }
+                        return !!filterResult;
+                    };
+
+                    // Handle lists vs single items
+                    if (evalVal && evalVal.type === "List" && Array.isArray(evalVal.exp)) {
+                        // For lists, filter each item
+                        const filtered = evalVal.exp.filter(testFilter);
+                        return { type: "List", exp: filtered };
+                    } else {
+                        // For single items, return the item if it passes the filter, otherwise Nothing
+                        if (testFilter(evalVal)) {
+                            return evalVal;
+                        } else {
+                            return { type: "NothingLiteral" }; // null equivalent in Memo
+                        }
+                    }
+                } else {
+                    result = node;
+                }
+                break;
             case "Additive":
             case "Multiplicative":
                 if (currState || 
@@ -286,6 +355,7 @@ memo.RuntimeError = class extends Error {
                     result = node;
                 }
                 break;
+            case "NothingLiteral":
             case "IntLiteral":
             case "CharLiteral":
             case "StringLiteral":
@@ -567,13 +637,16 @@ memo.RuntimeError = class extends Error {
         ast.params = params;
         ast.varname = varname.toLowerCase();
 
-        // Get dependencies - for ForLoop nodes, use the whole AST to get proper filtering
+        // Get dependencies - for ForLoop and FilteredExpression nodes, use the whole AST to get proper filtering
         if (ast.type === "ForLoop") {
             ast.deps = oi.getDependencies(ast);
             // Remove the iterator variable from deps (should not be a dependency)
             if (forIterator) {
                 ast.deps = ast.deps.filter(dep => dep.toLowerCase() !== forIterator.toLowerCase());
             }
+        } else if (ast.type === "FilteredExpression") {
+            // For FilteredExpression, get dependencies from the whole node (includes both exp and filter)
+            ast.deps = oi.getDependencies(ast);
         } else if ("exp" in ast) {
             ast.deps = oi.getDependencies(ast.exp);
         } else {
@@ -671,14 +744,23 @@ memo.RuntimeError = class extends Error {
                 if (evaluatedExp.type === "List" || evaluatedExp.type === "Range") {
                     const listNode = evaluatedExp.type === "Range" ?
                         memo.tools.rangeToList(evaluatedExp) : evaluatedExp;
-                    if (memo.tools.containsString(listNode)) {
+                    // Check for empty list
+                    if (Array.isArray(listNode.exp) && listNode.exp.length === 0) {
+                        printOutput = "Nothing";
+                    } else if (memo.tools.containsString(listNode)) {
                         // If list contains string/char, concatenate, but use digit form for IntLiterals
                         printOutput = memo.tools.stringifyList(listNode);
+                    } else if (Array.isArray(listNode.exp) && listNode.exp.length === 1) {
+                        // If the list has only one item, print it as a single value
+                        printOutput = memo.tools.stringifyList(listNode.exp[0]) + ".";
                     } else {
                         // Otherwise, print as smart list format <one, two, three>
                         const items = Array.isArray(listNode.exp) ? listNode.exp.map(elem => memo.tools.stringifyList(elem)) : [];
                         printOutput = `<${items.join(", ")}>`;
                     }
+                } else if (evaluatedExp.type === "NothingLiteral") {
+                    // Output "Nothing" for null values
+                    printOutput = "Nothing";
                 } else if (evaluatedExp.type === "StringLiteral") {
                     // Output string literals as-is
                     printOutput = evaluatedExp.value;
