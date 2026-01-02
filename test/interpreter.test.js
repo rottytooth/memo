@@ -46,6 +46,253 @@
         });
     });
 
+    describe('Reduce Expression Evaluation', () => {
+        test('sum of a list of numbers', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to five.');
+
+            memo.interpreter.parse('Remember total as the sum of nums.');
+            const output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('fifteen.'); // 1+2+3+4+5 = 15
+        });
+
+        test('sum of a single number', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember x as seven.');
+            memo.interpreter.parse('Remember total as the sum of x.');
+            const output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('seven.');
+        });
+
+        test('sum of a range', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember total as the sum of from one to ten.');
+            const output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('fifty-five.'); // 1+2+...+10 = 55
+        });
+
+        test('Reduce tracks dependencies correctly', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to five.');
+            memo.interpreter.parse('Remember total as the sum of nums.');
+
+            // Check dependencies
+            expect(memo.varlist.total.deps).toContain('nums');
+
+            // Check expression display
+            const expStr = memo.tools.expToStr(memo.varlist.total, false);
+            expect(expStr).toContain('sum');
+            expect(expStr).toContain('nums');
+        });
+
+        test('Reduce updates when dependency changes', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to three.');
+            memo.interpreter.parse('Remember total as the sum of nums.');
+
+            let output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('six.'); // 1+2+3 = 6
+
+            // Update the dependency
+            memo.interpreter.parse('Remember nums as from one to five.');
+            output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('fifteen.'); // 1+2+3+4+5 = 15
+        });
+
+        test('sum of empty list returns zero', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to three.');
+            memo.interpreter.parse('Remember big as one hundred.');
+            memo.interpreter.parse('Remember empty with n as nums where n is greater than big.');
+            memo.interpreter.parse('Remember total as the sum of empty.');
+            const output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('zero.');
+        });
+
+        test('Reduce expression displays correctly', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to five.');
+            const assignOutput = memo.interpreter.parse('Remember total as the sum of nums.');
+
+            // Should show assignment message
+            expect(assignOutput).toContain('I will remember total');
+
+            // Expression should stringify correctly
+            const expStr = memo.tools.expToStr(memo.varlist.total, false);
+            expect(expStr).toBe('the sum of nums');
+        });
+
+        test('sum of the squares of the even numbers in a list', () => {
+            // Equivalent to Python:
+            // nums = [1,2,3,4,5,6]
+            // evens = filter(lambda x: x % 2 == 0, nums)
+            // squares = map(lambda x: x*x, evens)
+            // total = reduce(lambda a,b: a+b, squares, 0)
+            // print(total)  # 56
+
+            memo.varlist = {}; // Reset state
+
+            // Create the list
+            const r1 = memo.interpreter.parse('Remember nums as from one to six.');
+            console.log('Step 1:', r1);
+
+            // Filter: get even numbers (where x modulo 2 equals 0)
+            const r2 = memo.interpreter.parse('Remember evens with x as nums where x modulo two is zero.');
+            console.log('Step 2:', r2);
+
+            // Map: square each even number (for loop creates list of squares)
+            const r3 = memo.interpreter.parse('Remember squares as for x in evens, x times x.');
+            console.log('Step 3:', r3);
+
+            // Reduce: sum all the squares
+            const r4 = memo.interpreter.parse('Remember total as the sum of squares.');
+            console.log('Step 4:', r4);
+
+            // Verify the result
+            const output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('fifty-six.'); // 2^2 + 4^2 + 6^2 = 4 + 16 + 36 = 56
+        });
+
+        test('product of a list of numbers', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from two to five.');
+            memo.interpreter.parse('Remember total as the product of nums.');
+            const output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('one hundred twenty.'); // 2*3*4*5 = 120
+        });
+
+        test('product of empty list returns one', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to three.');
+            memo.interpreter.parse('Remember big as one hundred.');
+            memo.interpreter.parse('Remember empty with n as nums where n is greater than big.');
+            memo.interpreter.parse('Remember total as the product of empty.');
+            const output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('one.');
+        });
+
+        test('minimum of a list of numbers', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from three to eight.');
+            memo.interpreter.parse('Remember result as the minimum of nums.');
+            const output = memo.interpreter.parse('Tell me about result.');
+            expect(output).toBe('three.');
+        });
+
+        test('maximum of a list of numbers', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from three to eight.');
+            memo.interpreter.parse('Remember result as the maximum of nums.');
+            const output = memo.interpreter.parse('Tell me about result.');
+            expect(output).toBe('eight.');
+        });
+
+        test('minimum of empty list returns nothing', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to three.');
+            memo.interpreter.parse('Remember big as one hundred.');
+            memo.interpreter.parse('Remember empty with n as nums where n is greater than big.');
+            memo.interpreter.parse('Remember result as the minimum of empty.');
+            const output = memo.interpreter.parse('Tell me about result.');
+            expect(output).toBe('Nothing.');
+        });
+
+        test('maximum of empty list returns nothing', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to three.');
+            memo.interpreter.parse('Remember big as one hundred.');
+            memo.interpreter.parse('Remember empty with n as nums where n is greater than big.');
+            memo.interpreter.parse('Remember result as the maximum of empty.');
+            const output = memo.interpreter.parse('Tell me about result.');
+            expect(output).toBe('Nothing.');
+        });
+
+        test('count of a list', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to ten.');
+            memo.interpreter.parse('Remember result as the count of nums.');
+            const output = memo.interpreter.parse('Tell me about result.');
+            expect(output).toBe('ten.');
+        });
+
+        test('count of empty list returns zero', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to three.');
+            memo.interpreter.parse('Remember big as one hundred.');
+            memo.interpreter.parse('Remember empty with n as nums where n is greater than big.');
+            memo.interpreter.parse('Remember result as the count of empty.');
+            const output = memo.interpreter.parse('Tell me about result.');
+            expect(output).toBe('zero.');
+        });
+
+        test('average of a list', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from two to six.');
+            memo.interpreter.parse('Remember result as the average of nums.');
+            const output = memo.interpreter.parse('Tell me about result.');
+            expect(output).toBe('four.'); // (2+3+4+5+6)/5 = 20/5 = 4
+        });
+
+        test('average of empty list returns zero', () => {
+            memo.varlist = {}; // Reset state
+            memo.interpreter.parse('Remember nums as from one to three.');
+            memo.interpreter.parse('Remember big as one hundred.');
+            memo.interpreter.parse('Remember empty with n as nums where n is greater than big.');
+            memo.interpreter.parse('Remember result as the average of empty.');
+            const output = memo.interpreter.parse('Tell me about result.');
+            expect(output).toBe('zero.');
+        });
+    });
+
+    describe('Reduce vs Binary Operator Disambiguation', () => {
+        test('sum of list uses Reduce', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember nums as from one to five.');
+            memo.interpreter.parse('Remember total as the sum of nums.');
+            const output = memo.interpreter.parse('Tell me about total.');
+            expect(output).toBe('fifteen.'); // 1+2+3+4+5 = 15
+            // Verify it's stored as Reduce expression
+            expect(memo.varlist.total.type).toBe('Reduce');
+            expect(memo.varlist.total.operator).toBe('sum');
+        });
+
+        test('sum of two expressions uses binary addition', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as the sum of one and two.');
+            const output = memo.interpreter.parse('Tell me about x.');
+            // Should compute correctly via fallback
+            expect(output).toBe('three.');
+        });
+
+        test('product of two expressions uses binary multiplication', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as the product of five and three.');
+            const output = memo.interpreter.parse('Tell me about x.');
+            // Should compute correctly via fallback
+            expect(output).toBe('fifteen.');
+        });
+
+        test('quotient of two expressions uses binary division', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as the quotient of ten and five.');
+            const output = memo.interpreter.parse('Tell me about x.');
+            // Should compute correctly via fallback
+            expect(output).toBe('two.');
+        });
+
+        test('sum of two variables uses binary addition with fallback', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember a as five.');
+            memo.interpreter.parse('Remember b as three.');
+            memo.interpreter.parse('Remember x as the sum of a and b.');
+            const output = memo.interpreter.parse('Tell me about x.');
+            expect(output).toBe('eight.');
+            // Verify it uses Additive expression (since it has dependencies)
+            expect(memo.varlist.x.type).toBe('Additive');
+            expect(memo.varlist.x.operator).toBe('+');
+        });
+    });
+
     describe('Nothing vs Zero Behavior', () => {
         test('Zero value displays as "zero", not "Nothing"', () => {
             memo.varlist = {}; // Reset state

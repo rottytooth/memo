@@ -157,11 +157,15 @@ memo.tools.expToStr = (node, isHtml) => {
                 return `(${memo.tools.expToStr(node.left, isHtml)} plus ${memo.tools.expToStr(node.right, isHtml)})`;
             if (node.operator == "-")
                 return `(${memo.tools.expToStr(node.left, isHtml)} minus ${memo.tools.expToStr(node.right, isHtml)})`;
+            break;
         case "Multiplicative":
             if (node.operator == "*")
                 return `(${memo.tools.expToStr(node.left, isHtml)} times ${memo.tools.expToStr(node.right, isHtml)})`;
             if (node.operator == "/")
                 return `(${memo.tools.expToStr(node.left, isHtml)} divided by ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "%")
+                return `(${memo.tools.expToStr(node.left, isHtml)} modulo ${memo.tools.expToStr(node.right, isHtml)})`;
+            break;
         case "NothingLiteral":
             return "Nothing";
         case "IntLiteral":
@@ -227,6 +231,9 @@ memo.tools.expToStr = (node, isHtml) => {
             return `${funcName} with ${paramStr}`;
         case "Lambda":
             return "lambda";
+        case "Reduce":
+            // Format: "the sum of expression"
+            return `the ${node.operator} of ${memo.tools.expToStr(node.exp, isHtml)}`;
         case "FilteredExpression":
             // Build the filter condition string
             let filterStr = "";

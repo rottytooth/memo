@@ -47,6 +47,10 @@ memo.RuntimeError = class extends Error {
         if (node.type === "Comparison") {
             return oi.getDependencies(node.left).concat(oi.getDependencies(node.right));
         }
+        if (node.type === "Reduce") {
+            // Get dependencies from the expression being reduced
+            return oi.getDependencies(node.exp);
+        }
         if (node.type === "FilteredExpression") {
             // Get dependencies from the expression being filtered
             let deps = oi.getDependencies(node.exp);
@@ -164,6 +168,8 @@ memo.RuntimeError = class extends Error {
                 return oi.determineType(left.value * right.value);
             case "/":
                 return oi.determineType(left.value / right.value);
+            case "%":
+                return oi.determineType(left.value % right.value);
             default:
                 throw new Error(`Unknown operator: ${operator}`);
         }
@@ -294,6 +300,105 @@ memo.RuntimeError = class extends Error {
         
         let result;
         switch(node.type) {
+            case "Reduce":
+                if (currState) {
+                    // Evaluate the expression
+                    let evalVal = oi.evalExp(node.exp, params, true);
+                    if (evalVal.type === "Range") {
+                        evalVal = memo.tools.rangeToList(evalVal);
+                    }
+
+                    // Convert single items to a list for uniform processing
+                    let items;
+                    if (evalVal && evalVal.type === "List" && Array.isArray(evalVal.exp)) {
+                        items = evalVal.exp;
+                    } else {
+                        // Single item - treat as a list of one
+                        items = [evalVal];
+                    }
+
+                    // Filter to only numeric items for most operations
+                    const numericItems = items.filter(item => 
+                        item.type === "IntLiteral" || item.type === "FloatLiteral"
+                    );
+
+                    // Perform reduction based on operator
+                    switch (node.operator) {
+                        case "sum": {
+                            let sum = 0;
+                            for (const item of numericItems) {
+                                sum += item.value;
+                            }
+                            return Number.isInteger(sum) 
+                                ? { type: "IntLiteral", value: sum }
+                                : { type: "FloatLiteral", value: sum };
+                        }
+                        
+                        case "product": {
+                            if (numericItems.length === 0) {
+                                return { type: "IntLiteral", value: 1 }; // Identity for multiplication
+                            }
+                            let product = 1;
+                            for (const item of numericItems) {
+                                product *= item.value;
+                            }
+                            return Number.isInteger(product)
+                                ? { type: "IntLiteral", value: product }
+                                : { type: "FloatLiteral", value: product };
+                        }
+                        
+                        case "minimum": {
+                            if (numericItems.length === 0) {
+                                return { type: "NothingLiteral" };
+                            }
+                            let min = numericItems[0].value;
+                            for (const item of numericItems) {
+                                if (item.value < min) min = item.value;
+                            }
+                            return Number.isInteger(min)
+                                ? { type: "IntLiteral", value: min }
+                                : { type: "FloatLiteral", value: min };
+                        }
+                        
+                        case "maximum": {
+                            if (numericItems.length === 0) {
+                                return { type: "NothingLiteral" };
+                            }
+                            let max = numericItems[0].value;
+                            for (const item of numericItems) {
+                                if (item.value > max) max = item.value;
+                            }
+                            return Number.isInteger(max)
+                                ? { type: "IntLiteral", value: max }
+                                : { type: "FloatLiteral", value: max };
+                        }
+                        
+                        case "count": {
+                            // Count all items, not just numeric
+                            return { type: "IntLiteral", value: items.length };
+                        }
+                        
+                        case "average": {
+                            if (numericItems.length === 0) {
+                                return { type: "IntLiteral", value: 0 };
+                            }
+                            let sum = 0;
+                            for (const item of numericItems) {
+                                sum += item.value;
+                            }
+                            const avg = sum / numericItems.length;
+                            return Number.isInteger(avg)
+                                ? { type: "IntLiteral", value: avg }
+                                : { type: "FloatLiteral", value: avg };
+                        }
+                        
+                        default:
+                            throw new memo.RuntimeError(`Unknown reduce operator: ${node.operator}.`);
+                    }
+                } else {
+                    result = node;
+                }
+                break;
             case "FilteredExpression":
                 if (currState) {
                     // Evaluate the main expression
@@ -302,12 +407,26 @@ memo.RuntimeError = class extends Error {
                         evalVal = memo.tools.rangeToList(evalVal);
                     }
 
+                    // Helper function to recursively extract variable name from an expression
+                    const extractVariableName = (expr) => {
+                        if (!expr) return null;
+                        if (expr.type === "VariableName") {
+                            return expr.name ? expr.name.varname : null;
+                        }
+                        // For binary operations (Multiplicative, Additive, Comparison), check left side first
+                        if (expr.left) {
+                            const leftVar = extractVariableName(expr.left);
+                            if (leftVar) return leftVar;
+                        }
+                        // Check right side if left didn't yield a variable
+                        if (expr.right) {
+                            return extractVariableName(expr.right);
+                        }
+                        return null;
+                    };
+
                     // Try to infer the filter variable name from the filter expression
-                    // Assume filter is a Comparison and left is VariableName
-                    let filterVar = null;
-                    if (node.filter && node.filter.left && node.filter.left.type === "VariableName") {
-                        filterVar = node.filter.left.name.varname;
-                    }
+                    let filterVar = extractVariableName(node.filter);
                     if (!filterVar) {
                         throw new memo.RuntimeError("Cannot determine filter variable for filtered expression.");
                     }
@@ -637,15 +756,15 @@ memo.RuntimeError = class extends Error {
         ast.params = params;
         ast.varname = varname.toLowerCase();
 
-        // Get dependencies - for ForLoop and FilteredExpression nodes, use the whole AST to get proper filtering
+        // Get dependencies - for ForLoop, FilteredExpression, and Reduce nodes, use the whole AST to get proper filtering
         if (ast.type === "ForLoop") {
             ast.deps = oi.getDependencies(ast);
             // Remove the iterator variable from deps (should not be a dependency)
             if (forIterator) {
                 ast.deps = ast.deps.filter(dep => dep.toLowerCase() !== forIterator.toLowerCase());
             }
-        } else if (ast.type === "FilteredExpression") {
-            // For FilteredExpression, get dependencies from the whole node (includes both exp and filter)
+        } else if (ast.type === "FilteredExpression" || ast.type === "Reduce") {
+            // For FilteredExpression and Reduce, get dependencies from the whole node
             ast.deps = oi.getDependencies(ast);
         } else if ("exp" in ast) {
             ast.deps = oi.getDependencies(ast.exp);
@@ -975,11 +1094,56 @@ memo.RuntimeError = class extends Error {
             memo.lastError = e;
             memo.lastLine = input;
             if (e.name == "SyntaxError") {
-                const word = getWordAt(preprocessedInput, e.location.start.column - 1);
-                if (word) {
-                    return `I didn't understand ${word}.`;
+                // Try fallback: convert reduce-style expressions to operators
+                // "the sum of X and Y" → "X plus Y"
+                // "the product of X and Y" → "X times Y"
+                // etc.
+                let fallbackInput = preprocessedInput;
+                let didFallback = false;
+
+                // Try each reduce operator as a binary operator fallback
+                const reduceFallbacks = [
+                    { pattern: /\b(the\s+)?sum\s+of\s+/gi, replacement: '', operator: 'plus' },
+                    { pattern: /\b(the\s+)?product\s+of\s+/gi, replacement: '', operator: 'times' },
+                    { pattern: /\b(the\s+)?quotient\s+of\s+/gi, replacement: '', operator: 'divided by' },
+                    { pattern: /\b(the\s+)?modulus\s+of\s+/gi, replacement: '', operator: 'modulo' }
+                ];
+
+                for (const fallback of reduceFallbacks) {
+                    if (fallback.pattern.test(preprocessedInput)) {
+                        // Convert "the sum of X and Y" to "X plus Y"
+                        fallbackInput = preprocessedInput.replace(fallback.pattern, fallback.replacement);
+                        // Replace " and " with the operator (only the first occurrence for binary operation)
+                        fallbackInput = fallbackInput.replace(/\s+and\s+/, ` ${fallback.operator} `);
+                        didFallback = true;
+                        break;
+                    }
+                }
+
+                // Try parsing with fallback
+                if (didFallback) {
+                    try {
+                        ast = memo.parser.parse(fallbackInput);
+                        // Success! Clear the error and continue
+                        memo.lastError = null;
+                        memo.lastLine = null;
+                    } catch (fallbackError) {
+                        // Fallback also failed, use original error
+                        const word = getWordAt(preprocessedInput, e.location.start.column - 1);
+                        if (word) {
+                            return `I didn't understand ${word}.`;
+                        } else {
+                            return `I didn't understand.`;
+                        }
+                    }
                 } else {
-                    return `I didn't understand.`;
+                    // No fallback attempted, use original error
+                    const word = getWordAt(preprocessedInput, e.location.start.column - 1);
+                    if (word) {
+                        return `I didn't understand ${word}.`;
+                    } else {
+                        return `I didn't understand.`;
+                    }
                 }
             } else if ("code" in e && e.code == "reserved") {
                 if (!isNaN(parseInt(e.details.name))) {

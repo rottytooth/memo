@@ -25,8 +25,10 @@ memo.preprocess = function(input) {
     // Match: identifier followed by "is" followed by value/expression
     // But not when "is" is part of "what is" or comparison operators
     // And not when "is" appears after "if", "then", or "else" (inside conditionals)
+    // And not when "is" appears after "where" or "when" (inside filter expressions)
+    // And not when "is" appears after arithmetic operators (plus, minus, times, divided by, modulo)
     processed = processed.replace(
-        /\b(?!what\s+)(?<!if\s)(?<!then\s)(?<!else\s)([a-zA-Z_][a-zA-Z0-9_]*)\s+is\s+(?!equal|greater|less|than|not|more|fewer|the\s+same|different)(.+)/gi,
+        /\b(?!what\s+)(?<!if\s)(?<!then\s)(?<!else\s)(?<!where\s)(?<!when\s)(?<!plus\s)(?<!minus\s)(?<!times\s)(?<!by\s)(?<!modulo\s)([a-zA-Z_][a-zA-Z0-9_]*)\s+is\s+(?!equal|greater|less|than|not|more|fewer|the\s+same|different)(.+)/gi,
         'remember $1 as $2'
     );
 
@@ -76,8 +78,6 @@ memo.preprocess = function(input) {
         'add': 'plus',
         'added to': 'plus',
         'adding': 'plus',
-        'sum of': 'sum',
-        'total of': 'sum',
         'combined with': 'plus',
 
         // Subtraction
@@ -90,18 +90,15 @@ memo.preprocess = function(input) {
         'multiply': 'times',
         'multiplied by': 'times',
         'mult': 'times',
-        'product of': 'product',
 
         // Division
         'divide': 'divided by',
         'div': 'divided by',
         'over': 'divided by',
-        'quotient of': 'quotient',
 
         // Modulo
         'mod': 'modulo',
         'remainder': 'modulo',
-        'remainder of': 'modulus',
     };
 
 
@@ -132,6 +129,14 @@ memo.preprocess = function(input) {
         processed = processed.replace(regex, `$1 ${canonical} $2 as`);
     }
 
+    // Protect reduce expressions from 'of' → 'with' conversion
+    // Replace "the sum of", "sum of", "product of", etc. with temporary markers
+    const reduceMarkers = [];
+    processed = processed.replace(/\b(the\s+)?(sum|product|quotient|modulus|total|minimum|maximum|count|average)\s+of\s+/gi, (match) => {
+        reduceMarkers.push(match);
+        return `__REDUCE_MARKER_${reduceMarkers.length - 1}__`;
+    });
+
     // For EXPRESSION/CALL context: "identifier [VARIANT] parameter"
     // Add variations that resolve to "with" in expression context
     const callParamVariants = {
@@ -150,6 +155,11 @@ memo.preprocess = function(input) {
         );
         processed = processed.replace(regex, `$1 ${canonical} $2`);
     }
+
+    // Restore reduce expressions
+    reduceMarkers.forEach((marker, index) => {
+        processed = processed.replace(`__REDUCE_MARKER_${index}__`, marker);
+    });
 
     // Special handling for "for" - only convert to "with" when NOT followed by "in"
     // This preserves "for x in range" for for-loops while converting "Next for x" to "Next with x"
