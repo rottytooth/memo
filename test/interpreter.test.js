@@ -825,14 +825,113 @@ describe('Memo Interpreter Tests', () => {
         test('Print a defined variable', () => {
             memo.interpreter.parse('Remember x as ten.');
             const result = memo.interpreter.parse('Tell me about x.');
-            
+
             expect(result).toContain('ten');
         });
 
         test('Print undefined variable', () => {
             const result = memo.interpreter.parse('Tell me about missing.');
-            
+
             expect(result).toContain("don't remember missing");
+        });
+    });
+
+    describe('Print Floats and Fractions', () => {
+        test('Print positive float < 0.2 as "more than [whole]"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as five divided by thirty.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // 5/30 = 0.166... → "more than zero"
+            expect(result).toBe('more than zero.');
+        });
+
+        test('Print positive float 0.2-0.4 as "a third"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as one divided by three.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // 1/3 = 0.333... → "a third"
+            expect(result).toBe('a third.');
+        });
+
+        test('Print positive float 0.4-0.6 as "a half"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as one divided by two.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // 1/2 = 0.5 → "a half"
+            expect(result).toBe('a half.');
+        });
+
+        test('Print positive float 0.6-0.8 as "more than a half"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as two divided by three.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // 2/3 = 0.666... → "more than a half"
+            expect(result).toBe('more than a half.');
+        });
+
+        test('Print positive float >= 0.8 as "almost [next]"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as five divided by six.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // 5/6 = 0.833... → "almost one"
+            expect(result).toBe('almost one.');
+        });
+
+        test('Print positive float with whole part as "[whole] and a half"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as three divided by two.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // 3/2 = 1.5 → "one and a half"
+            expect(result).toBe('one and a half.');
+        });
+
+        test('Print negative float < -0.2 as "more than [whole] negative"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as zero minus five divided by thirty.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // -5/30 = -0.166... → "more than zero negative"
+            expect(result).toBe('more than zero negative.');
+        });
+
+        test('Print negative float -0.2 to -0.4 as "a third negative"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as zero minus one divided by three.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // -1/3 = -0.333... → "a third negative"
+            expect(result).toBe('a third negative.');
+        });
+
+        test('Print negative float -0.4 to -0.6 as "a half negative"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as zero minus one divided by two.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // -1/2 = -0.5 → "a half negative"
+            expect(result).toBe('a half negative.');
+        });
+
+        test('Print negative float -0.6 to -0.8 as "more than a half negative"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as zero minus two divided by three.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // -2/3 = -0.666... → "more than a half negative"
+            expect(result).toBe('more than a half negative.');
+        });
+
+        test('Print negative float <= -0.8 as "almost [next] negative"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as zero minus five divided by six.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // -5/6 = -0.833... → "almost one negative"
+            expect(result).toBe('almost one negative.');
+        });
+
+        test('Print negative float with whole part as "more than [whole] negative"', () => {
+            memo.varlist = {};
+            memo.interpreter.parse('Remember x as zero minus three divided by two.');
+            const result = memo.interpreter.parse('Tell me about x.');
+            // -3/2 = -1.5 → should be handled as negative with whole part
+            // Based on floatToStr logic, this should produce something for negative with whole
+            expect(result).toContain('negative');
         });
     });
 

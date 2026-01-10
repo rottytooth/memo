@@ -8,6 +8,8 @@ memo.tools.intToStr = (num) => {
     // Handle very large numbers
     if (num > 999999999999) {
         return "a lot";
+    } else if (num < -999999999999) {
+        return "a lot negative"
     }
     
     const ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
@@ -65,24 +67,32 @@ memo.tools.intToStr = (num) => {
 }
 
 memo.tools.floatToStr = (num) => {
-    const wholePart = parseInt(String(num).split('.')[0]);
-    const decimalPart = String(num).split('.')[1];
-    const floatPart = decimalPart ? parseFloat('0.' + decimalPart) : 0;
+    const isNegative = num < 0;
+    const absNum = Math.abs(num);
+    const wholePart = Math.floor(absNum);
+    const floatPart = absNum - wholePart;
     const wholeStr = memo.tools.intToStr(wholePart);
 
+    let result;
+
     if (floatPart < 0.2) {
-        return `more than ${wholeStr}`;
-    } 
-    if (floatPart < 0.4) {
-        return `${num >= 1 ? wholeStr + ' and' : ""} a third`;
+        result = `more than ${wholeStr}`;
+    } else if (floatPart < 0.4) {
+        result = absNum >= 1 ? `${wholeStr} and a third` : "a third";
+    } else if (floatPart < 0.6) {
+        result = absNum >= 1 ? `${wholeStr} and a half` : "a half";
+    } else if (floatPart < 0.8) {
+        result = absNum >= 1 ? `more than ${wholeStr} and a half` : "more than a half";
+    } else {
+        result = `almost ${memo.tools.intToStr(wholePart + 1)}`;
     }
-    if (floatPart < 0.6) {
-        return `${num >= 1 ? wholeStr + ' and' : ""} a half`;
+
+    // Add "negative" suffix for negative numbers
+    if (isNegative) {
+        result += ' negative';
     }
-    if (floatPart < 0.8) {
-        return `more than ${num >= 1 ? wholeStr + ' and' : ""} a half`;
-    }
-    return `almost ${memo.tools.intToStr(wholePart + 1)}`;
+
+    return result;
 }    
 
 memo.tools.capitalize = (str) => {

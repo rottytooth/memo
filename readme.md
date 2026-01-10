@@ -4,6 +4,18 @@ An interpreter that only performs what it can see. Code flows off the screen int
 
 ## Sample program
 
+### Simple Arithmetic
+[With responses from the interpreter]
+
+Remember number as one million, five-hundred and thirteen thousand, eight hundred, sixty-two.
+> I will remember number as one million five hundred thirteen thousand eight hundred sixty-two.
+
+Tell me about number times two.
+> Three million twenty-seven thousand seven hundred twenty-four.
+
+Tell me about number times number.
+> A lot.
+
 ### Sum of Squares
 
 Remember nums as from one to six.
