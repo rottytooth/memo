@@ -1,4 +1,0 @@
-Remember nums as from one to six.
-Remember evens with x as nums where x modulo two is zero.
-Remember squares as for x in evens, x times x.
-Remember total as the sum of squares.
