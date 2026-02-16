@@ -933,6 +933,34 @@ describe('Memo Interpreter Tests', () => {
             // Based on floatToStr logic, this should produce something for negative with whole
             expect(result).toContain('negative');
         });
+
+        test('Print literal fraction "a half" directly', () => {
+            memo.varlist = {};
+            const result = memo.interpreter.parse('Tell me about a half.');
+            // Should evaluate 0.5 and print "a half"
+            expect(result).toBe('a half.');
+        });
+
+        test('Print literal fraction "a third" directly', () => {
+            memo.varlist = {};
+            const result = memo.interpreter.parse('Tell me about a third.');
+            // Should evaluate 0.333... and print "a third"
+            expect(result).toBe('a third.');
+        });
+
+        test('Print literal fraction "a quarter" directly', () => {
+            memo.varlist = {};
+            const result = memo.interpreter.parse('Tell me about a quarter.');
+            // Should evaluate 0.25 and print "a third" (0.25 falls in 0.2-0.4 range)
+            expect(result).toBe('a third.');
+        });
+
+        test('Print literal number "one" directly', () => {
+            memo.varlist = {};
+            const result = memo.interpreter.parse('Tell me about one.');
+            // Should work - this is the control test
+            expect(result).toBe('one.');
+        });
     });
 
 
