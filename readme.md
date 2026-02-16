@@ -6,7 +6,7 @@ An interpreter that only performs what it can see. Code flows off the screen int
 
 ### Simple Arithmetic
 [With responses from the interpreter]
-
+```
 Remember number as one million, five-hundred and thirteen thousand, eight hundred, sixty-two.
 > I will remember number as one million five hundred thirteen thousand eight hundred sixty-two.
 
@@ -15,9 +15,9 @@ Tell me about number times two.
 
 Tell me about number times number.
 > A lot.
-
+```
 ### Sum of Squares
-
+```
 Remember nums as from one to six.
 
 Remember evens with x as nums where x modulo two is zero.
@@ -27,9 +27,9 @@ Remember squares as for x in evens, x times x.
 Remember total as the sum of squares.
 
 Tell me about total.
-
+```
 ### 99 Bottles
-
+```
 Remember say with n as n and " bottles of beer on the wall, " and n and " bottles of beer! Take one down, pass it around, " and n minus one and " bottles of beer on the wall! ".
 
 Remember print99 as for beer in ninety-nine to zero, if beer is greater than zero then beer's say else "all out, motherfuckers!".
@@ -41,8 +41,8 @@ More.
 More.
 
 More.
-
-[repeat More. until it responds with "There is nothing more."]
+```
+[repeat More. until it responds with `There is nothing more.`]
 
 ## To Use
 
