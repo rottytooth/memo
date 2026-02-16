@@ -421,7 +421,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let cursorField = document.getElementById("n"); 
 
     cursorField.addEventListener("keydown", function(event) {
-        if (event.key === "ArrowUp" && currHistoryLoc < 12) {
+        if (event.membkey === "ArrowUp" && currHistoryLoc < 12) {
             const queryElement = document.querySelector(`#n-${currHistoryLoc+1} .query`);
             if (queryElement) {
                 currHistoryLoc++;
