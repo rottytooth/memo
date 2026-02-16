@@ -52,7 +52,7 @@ Let = (("R"/"r")"emember" / ("U"/"u")"nderstand"  / ("R"/"r")"ecognize" ) _ v:Id
         exp: lbd,
         params: p
     };
-} / (("R"/"r")"emember" / ("U"/"u")"nderstand"  / ("R"/"r")"ecognize" ) _ v:Identifier _ "as" lbd:Lambda {
+} / (("R"/"r")"emember" / ("U"/"u")"nderstand"  / ("R"/"r")"ecognize" ) _ v:Identifier _ "as" _ lbd:Lambda {
 	return {
     	cmd: "let",
         varname: v.varname,
@@ -77,10 +77,10 @@ Print = ("T"/"t")"ell me" (_ "about")? _ exp:Expression {
 Identifier = v:NumberLiteral {
 	throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", {"name": v["value"]});
 }
-/ !(("from"/"to"/"the"/"range"/"count") ![a-zA-Z0-9_]) v:("remember"/"million"/"thousand"/"hundred"/"billion"/"negative") // add other reserved words here
+/ !(("from"/"to"/"the"/"range"/"count"/"sum") ![a-zA-Z0-9_]) v:("remember"/"million"/"thousand"/"hundred"/"billion"/"negative") // add other reserved words here
 {
   throw new MemoSyntaxError("Cannot assign a new value to a reserved name", "reserved", v)
-} / !(("from"/"to"/"the"/"range"/"count") ![a-zA-Z0-9_]) v:([a-zA-ZäöüßÄÖÜ_]([a-z0-9A-ZäöüßÄÖÜ_])*) {
+} / !(("from"/"to"/"the"/"range"/"count"/"sum") ![a-zA-Z0-9_]) v:([a-zA-ZäöüßÄÖÜ_]([a-z0-9A-ZäöüßÄÖÜ_])*) {
 	return {
         type: "Variable",
         varname: flattenToString(v).toLowerCase()
@@ -88,9 +88,9 @@ Identifier = v:NumberLiteral {
 }
 
 Lambda = "lambda" {
-  return {
-    	type: "Lambda",
+	return {
+			type: "Lambda",
 
-      // exp: exp
-    };
+			// exp: exp
+		};
 } / Expression

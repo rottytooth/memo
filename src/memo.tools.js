@@ -8,6 +8,8 @@ memo.tools.intToStr = (num) => {
     // Handle very large numbers
     if (num > 999999999999) {
         return "a lot";
+    } else if (num < -999999999999) {
+        return "a lot negative"
     }
     
     const ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
@@ -65,24 +67,32 @@ memo.tools.intToStr = (num) => {
 }
 
 memo.tools.floatToStr = (num) => {
-    const wholePart = parseInt(String(num).split('.')[0]);
-    const decimalPart = String(num).split('.')[1];
-    const floatPart = decimalPart ? parseFloat('0.' + decimalPart) : 0;
+    const isNegative = num < 0;
+    const absNum = Math.abs(num);
+    const wholePart = Math.floor(absNum);
+    const floatPart = absNum - wholePart;
     const wholeStr = memo.tools.intToStr(wholePart);
 
+    let result;
+
     if (floatPart < 0.2) {
-        return `more than ${wholeStr}`;
-    } 
-    if (floatPart < 0.4) {
-        return `${num >= 1 ? wholeStr + ' and' : ""} a third`;
+        result = `more than ${wholeStr}`;
+    } else if (floatPart < 0.4) {
+        result = absNum >= 1 ? `${wholeStr} and a third` : "a third";
+    } else if (floatPart < 0.6) {
+        result = absNum >= 1 ? `${wholeStr} and a half` : "a half";
+    } else if (floatPart < 0.8) {
+        result = absNum >= 1 ? `more than ${wholeStr} and a half` : "more than a half";
+    } else {
+        result = `almost ${memo.tools.intToStr(wholePart + 1)}`;
     }
-    if (floatPart < 0.6) {
-        return `${num >= 1 ? wholeStr + ' and' : ""} a half`;
+
+    // Add "negative" suffix for negative numbers
+    if (isNegative) {
+        result += ' negative';
     }
-    if (floatPart < 0.8) {
-        return `more than ${num >= 1 ? wholeStr + ' and' : ""} a half`;
-    }
-    return `almost ${memo.tools.intToStr(wholePart + 1)}`;
+
+    return result;
 }    
 
 memo.tools.capitalize = (str) => {
@@ -124,6 +134,8 @@ memo.tools.stringifyList = (node) => {
     if (!node) return "";
 
     switch(node.type) {
+            case "NothingLiteral":
+                return "Nothing";
             case "IntLiteral":
                 return memo.tools.intToStr(node.value);
             case "FloatLiteral":
@@ -134,9 +146,13 @@ memo.tools.stringifyList = (node) => {
                 return node.value;
             case "List":
                 if (Array.isArray(node.exp)) {
+                    // Empty list should return "Nothing"
+                    if (node.exp.length === 0) {
+                        return "Nothing";
+                    }
                     return node.exp.map(elem => memo.tools.stringifyList(elem)).join("");
                 }
-                return "";
+                return "Nothing";
             default:
                 return "";
     }
@@ -151,11 +167,17 @@ memo.tools.expToStr = (node, isHtml) => {
                 return `(${memo.tools.expToStr(node.left, isHtml)} plus ${memo.tools.expToStr(node.right, isHtml)})`;
             if (node.operator == "-")
                 return `(${memo.tools.expToStr(node.left, isHtml)} minus ${memo.tools.expToStr(node.right, isHtml)})`;
+            break;
         case "Multiplicative":
             if (node.operator == "*")
                 return `(${memo.tools.expToStr(node.left, isHtml)} times ${memo.tools.expToStr(node.right, isHtml)})`;
             if (node.operator == "/")
-                return `(${memo.tools.expToStr(node.left, isHtml)} divided by ${memo.tools.expToStr(node.right, isHtml)})`; 
+                return `(${memo.tools.expToStr(node.left, isHtml)} divided by ${memo.tools.expToStr(node.right, isHtml)})`;
+            if (node.operator == "%")
+                return `(${memo.tools.expToStr(node.left, isHtml)} modulo ${memo.tools.expToStr(node.right, isHtml)})`;
+            break;
+        case "NothingLiteral":
+            return "Nothing";
         case "IntLiteral":
             return memo.tools.intToStr(node.value);
         case "FloatLiteral":
@@ -219,6 +241,18 @@ memo.tools.expToStr = (node, isHtml) => {
             return `${funcName} with ${paramStr}`;
         case "Lambda":
             return "lambda";
+        case "Reduce":
+            // Format: "the sum of expression"
+            return `the ${node.operator} of ${memo.tools.expToStr(node.exp, isHtml)}`;
+        case "FilteredExpression":
+            // Build the filter condition string
+            let filterStr = "";
+            if (node.filter) {
+                filterStr = memo.tools.expToStr(node.filter, isHtml);
+            }
+
+            // Format: "expression where condition" or "expression when condition"
+            return `${memo.tools.expToStr(node.exp, isHtml)} where ${filterStr}`;
         case "ForLoop":
             let rangeStr = "";
             if (node.range) {

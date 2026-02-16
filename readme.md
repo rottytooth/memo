@@ -4,15 +4,45 @@ An interpreter that only performs what it can see. Code flows off the screen int
 
 ## Sample program
 
-Remember Say with n as if n is zero then "No more bottles", else if n is one then "one bottle", else n plus " bottles".
+### Simple Arithmetic
+[With responses from the interpreter]
 
-Remember Next with n as if n is one then "no more bottles", else if n is zero then "ninety nine bottles", else n minus one, " bottles".
+Remember number as one million, five-hundred and thirteen thousand, eight hundred, sixty-two.
+> I will remember number as one million five hundred thirteen thousand eight hundred sixty-two.
 
-Remember Action with n as if n is zero then "Go to the store and buy some more", else "Take one down and pass it around".
+Tell me about number times two.
+> Three million twenty-seven thousand seven hundred twenty-four.
 
-Remember Print99 as for beer in ninety-nine to zero, beer's Say, " of beer on the wall, ", beer's Say, " of beer.\n", beer's Action, "\n", beer's Next, " of beer on the wall.\n".
+Tell me about number times number.
+> A lot.
+
+### Sum of Squares
+
+Remember nums as from one to six.
+
+Remember evens with x as nums where x modulo two is zero.
+
+Remember squares as for x in evens, x times x.
+
+Remember total as the sum of squares.
+
+Tell me about total.
+
+### 99 Bottles
+
+Remember say with n as n and " bottles of beer on the wall, " and n and " bottles of beer! Take one down, pass it around, " and n minus one and " bottles of beer on the wall! ".
+
+Remember print99 as for beer in ninety-nine to zero, if beer is greater than zero then beer's say else "all out, motherfuckers!".
 
 Tell me about Print99.
+
+More.
+
+More.
+
+More.
+
+[repeat More. until it responds with "There is nothing more."]
 
 ## To Use
 
@@ -21,8 +51,6 @@ Tell me about Print99.
 ## To Contribute
 
 Please don't update `memo.js` or `memo.parser.js` directly. Update in src folder and then build with `grunt build`. 
-
-PEG is optimized for PeggyJs. 
 
 ### Setting up the project
 
